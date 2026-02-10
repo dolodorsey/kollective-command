@@ -31,7 +31,7 @@ const Social = () => {
   const { data: scheduled = [] } = useQuery({
     queryKey: ['scheduled-messages'],
     queryFn: async () => {
-      const { data } = await supabase.from('scheduled_messages').select('*').order('send_at', { ascending: true }).limit(50);
+      const { data } = await supabase.from('scheduled_messages').select('*').order('scheduled_at', { ascending: true }).limit(50);
       return data || [];
     },
   });
