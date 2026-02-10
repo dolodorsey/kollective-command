@@ -24,7 +24,7 @@ const Tasks = () => {
   const { data: commands = [] } = useQuery({
     queryKey: ['command-log'],
     queryFn: async () => {
-      const { data } = await supabase.from('command_log').select('*').order('created_at', { ascending: false }).limit(50);
+      const { data } = await supabase.from('command_log').select('*').order('executed_at', { ascending: false }).limit(50);
       return data || [];
     },
   });
@@ -32,7 +32,7 @@ const Tasks = () => {
   const { data: scheduledMsgs = [] } = useQuery({
     queryKey: ['scheduled-messages-tasks'],
     queryFn: async () => {
-      const { data } = await supabase.from('scheduled_messages').select('*').order('send_at', { ascending: true }).limit(50);
+      const { data } = await supabase.from('scheduled_messages').select('*').order('scheduled_at', { ascending: true }).limit(50);
       return data || [];
     },
   });
