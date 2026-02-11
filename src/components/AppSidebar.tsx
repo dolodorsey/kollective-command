@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Terminal, MessageSquare, Send, Target, Inbox, Share2,
+  LayoutDashboard, Terminal, MessageSquare, Calendar, Send, Target, Inbox, Share2,
   CheckSquare, FileOutput, Activity, Settings,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -11,10 +11,11 @@ import {
   SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 
-const NAV_ITEMS = [
+const NAV = [
   { title: "HOME", url: "/", icon: LayoutDashboard },
   { title: "COMMANDS", url: "/commands", icon: Terminal },
   { title: "CHAT", url: "/chat", icon: MessageSquare },
+  { title: "EVENTS", url: "/events", icon: Calendar },
   { title: "OUTREACH", url: "/outreach", icon: Send },
   { title: "LEADS", url: "/leads", icon: Target },
   { title: "INBOX", url: "/inbox", icon: Inbox },
@@ -28,15 +29,15 @@ const NAV_ITEMS = [
 export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const collapsed = state === "collapsed";
 
   const { data: pendingCount = 0 } = useQuery({
-    queryKey: ['pending-approvals-count'],
+    queryKey: ["pending-count"],
     queryFn: async () => {
       const { count } = await supabase
-        .from('approval_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+        .from("approval_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
       return count || 0;
     },
     refetchInterval: 30000,
@@ -45,7 +46,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
-        {!isCollapsed ? (
+        {!collapsed ? (
           <div>
             <h1 className="text-lg font-bold tracking-[0.2em] text-sidebar-primary">KOLLECTIVE</h1>
             <p className="mt-0.5 text-[10px] tracking-[0.3em] text-sidebar-foreground/50">COMMAND CENTER</p>
@@ -60,22 +61,16 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
-                const isActive = item.url === '/'
-                  ? location.pathname === '/'
-                  : location.pathname.startsWith(item.url);
-                const showBadge = item.title === 'TASKS' && pendingCount > 0;
+              {NAV.map(item => {
+                const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
+                const badge = item.title === "TASKS" && pendingCount > 0;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.title}
-                    >
+                    <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
                       <Link to={item.url}>
                         <item.icon className="h-4 w-4" />
                         <span className="text-[11px] font-medium tracking-wider">{item.title}</span>
-                        {showBadge && !isCollapsed && (
+                        {badge && !collapsed && (
                           <span className="ml-auto rounded-full bg-sidebar-primary px-1.5 py-0.5 text-[9px] font-bold text-sidebar-primary-foreground">
                             {pendingCount}
                           </span>
@@ -90,7 +85,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
-        {!isCollapsed && (
+        {!collapsed && (
           <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar-primary/10 text-xs font-bold text-sidebar-primary">D</div>
             <div>
