@@ -40,14 +40,15 @@ const Home = () => {
     refetchInterval: 30000,
   });
 
-  const { data: systemMode = 'normal' } = useQuery({
+  const { data: systemModeData } = useQuery({
     queryKey: ['system-mode'],
     queryFn: async () => {
       const { data } = await supabase.from('system_mode').select('*').limit(1).maybeSingle();
-      return data?.mode || 'normal';
+      return data;
     },
     refetchInterval: 30000,
   });
+  const systemMode = systemModeData?.mode || 'normal';
 
   const { data: signalFeed = [] } = useQuery({
     queryKey: ['signal-feed'],
