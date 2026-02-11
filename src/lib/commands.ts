@@ -1,48 +1,72 @@
 import { supabase } from './supabase';
 import { toast } from 'sonner';
 
+const N8N_BASE = "https://drdorsey.app.n8n.cloud";
+
 export interface Command {
   command_type: string;
-  scope: string;
-  payload: Record<string, unknown>;
-  requested_by: string;
-  idempotency_key: string;
-  risk_level: string;
-  status: string;
-  created_at: string;
+  scope?: string;
+  target_key?: string;
+  payload?: Record<string, unknown>;
 }
 
 export async function sendCommand(
-  type: string,
-  payload: Record<string, unknown> = {},
-  riskLevel: string = 'low'
-): Promise<Command> {
-  const cmd: Command = {
-    command_type: type,
-    scope: (payload.scope as string) || 'global',
-    payload,
-    requested_by: 'dr.dorsey',
-    idempotency_key: `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    risk_level: riskLevel,
-    status: 'pending',
-    created_at: new Date().toISOString(),
-  };
-
+  command_type: string,
+  payload?: Record<string, unknown>,
+  scope?: string,
+  target_key?: string
+) {
   try {
-    const { error } = await supabase.from('command_log').insert(cmd);
-    if (error) throw error;
-
-    fetch('https://drdorsey.app.n8n.cloud/webhook/command-authority', {
+    const res = await fetch(`${N8N_BASE}/webhook/execute-command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cmd),
-    }).catch(() => {});
+      body: JSON.stringify({ command_type, scope: scope || 'global', target_key, payload }),
+    });
 
-    toast.success(`Command sent: ${type}`, { duration: 3500 });
-    return cmd;
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    toast.error(`Failed: ${message}`, { duration: 3500 });
-    throw err;
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Command sent: ${command_type}`);
+        return data;
+      }
+    }
+    
+    // Fallback: log directly to Supabase
+    const { error } = await supabase.from('command_log').insert({
+      command_type,
+      scope: scope || 'global',
+      target_key,
+      payload,
+      status: 'queued',
+      executed_at: new Date().toISOString(),
+    });
+    
+    if (!error) {
+      toast.success(`Command queued: ${command_type}`);
+    } else {
+      toast.error('Failed to send command');
+    }
+  } catch {
+    // Offline fallback
+    const { error } = await supabase.from('command_log').insert({
+      command_type,
+      scope: scope || 'global',
+      target_key,
+      payload,
+      status: 'queued',
+      executed_at: new Date().toISOString(),
+    });
+    if (!error) toast.success(`Command queued: ${command_type}`);
+    else toast.error('Command failed');
   }
+}
+
+export async function killCommand(commandId: string) {
+  await supabase.from('command_log').update({ status: 'killed' }).eq('id', commandId);
+  toast.success('Command killed');
+}
+
+export async function retryCommand(commandId: string) {
+  await supabase.from('command_log').update({ status: 'retrying' }).eq('id', commandId);
+  toast.success('Command retrying');
 }
