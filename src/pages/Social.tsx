@@ -1,179 +1,168 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { sendCommand } from "@/lib/commands";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import {
-  Share2, Instagram, Music, Twitter, Facebook,
-  Plus, Filter, Calendar, CheckCircle, AlertCircle,
-  Clock, Edit, Eye,
-} from "lucide-react";
+import { Share2, Users, MessageSquare, Plus, Instagram, Twitter, Facebook, Search } from "lucide-react";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-const PLATFORMS = [
-  { key: "all", label: "All", icon: Share2 },
-  { key: "ig", label: "Instagram", icon: Instagram },
-  { key: "tiktok", label: "TikTok", icon: Music },
-  { key: "x", label: "X", icon: Twitter },
-  { key: "fb", label: "Facebook", icon: Facebook },
-];
-
-const STATUSES = ["All", "Drafted", "Scheduled", "Published", "Failed", "Needs Approval"];
-
-const STATUS_MAP: Record<string, { variant: 'default' | 'success' | 'warning' | 'error' | 'info' | 'purple'; icon: React.ElementType }> = {
-  drafted: { variant: "default", icon: Edit },
-  scheduled: { variant: "info", icon: Calendar },
-  published: { variant: "success", icon: CheckCircle },
-  failed: { variant: "error", icon: AlertCircle },
-  needs_approval: { variant: "purple", icon: Clock },
+const PLATFORM_ICONS: Record<string, React.ElementType> = {
+  Instagram: Instagram, instagram: Instagram,
+  Twitter: Twitter, twitter: Twitter,
+  Facebook: Facebook, facebook: Facebook,
 };
 
 const Social = () => {
-  const [platform, setPlatform] = useState("all");
-  const [status, setStatus] = useState("All");
+  const [tab, setTab] = useState<"targets" | "outreach" | "calendar">("targets");
+  const [platformFilter, setPlatformFilter] = useState("all");
 
   const { data: targets = [] } = useQuery({
-    queryKey: ["social-targets"],
+    queryKey: ["social-targets", platformFilter],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("social_outreach_targets")
-        .select("*")
-        .limit(50);
+      let q = supabase.from("social_outreach_targets").select("*").order("created_at", { ascending: false }).limit(100);
+      if (platformFilter !== "all") q = q.eq("platform", platformFilter);
+      const { data } = await q;
       return data || [];
     },
   });
 
-  const { data: scheduled = [] } = useQuery({
-    queryKey: ["scheduled-messages"],
+  const { data: outreachLog = [] } = useQuery({
+    queryKey: ["social-outreach-log"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("scheduled_messages")
-        .select("*")
-        .order("scheduled_at", { ascending: false })
-        .limit(50);
+      const { data } = await supabase.from("social_outreach_log").select("*").order("created_at", { ascending: false }).limit(50);
       return data || [];
     },
   });
 
-  const { data: platformStatus } = useQuery({
-    queryKey: ["platform-status"],
+  const { data: brandRegistry = [] } = useQuery({
+    queryKey: ["brand-registry"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("mcp_core_config")
-        .select("config_value")
-        .eq("config_key", "platform_status")
-        .maybeSingle();
-      return data?.config_value ? JSON.parse(data.config_value as string) : {};
+      const { data } = await supabase.from("brand_registry").select("brand_key, brand_name, division, instagram").eq("is_active", true).order("brand_name");
+      return data || [];
     },
   });
+
+  const { data: stats } = useQuery({
+    queryKey: ["social-stats"],
+    queryFn: async () => {
+      const [totalTargets, activeBrands] = await Promise.all([
+        supabase.from("social_outreach_targets").select("*", { count: "exact", head: true }),
+        supabase.from("brand_registry").select("*", { count: "exact", head: true }).eq("is_active", true),
+      ]);
+      return { targets: totalTargets.count ?? 0, brands: activeBrands.count ?? 0 };
+    },
+  });
+
+  const tabs = [
+    { key: "targets", label: "Outreach Targets", count: targets.length },
+    { key: "outreach", label: "Outreach Log", count: outreachLog.length },
+    { key: "calendar", label: "Brand Accounts", count: brandRegistry.length },
+  ] as const;
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Social Control</h1>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          New Post
-        </Button>
+        <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Add Target</Button>
       </div>
 
-      {/* Platform Connection Status */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { name: "Instagram", key: "meta_ig", icon: Instagram },
-          { name: "TikTok", key: "tiktok", icon: Music },
-          { name: "X / Twitter", key: "twitter_x", icon: Twitter },
-          { name: "Gmail", key: "gmail", icon: Share2 },
-        ].map(p => {
-          const pStatus = platformStatus?.[p.key] || "not_connected";
-          const connected = pStatus === "token_loaded" || pStatus === "connected";
-          return (
-            <div key={p.key} className={cn(
-              "rounded-lg border p-4 transition-all",
-              connected ? "border-status-success/30 bg-status-success/5" : "border-border/50 bg-card"
-            )}>
-              <div className="flex items-center gap-2">
-                <p.icon className={cn("h-4 w-4", connected ? "text-status-success" : "text-muted-foreground/40")} />
-                <span className="text-sm font-medium text-foreground">{p.name}</span>
-              </div>
-              <StatusBadge variant={connected ? "success" : "default"} className="mt-2">
-                {typeof pStatus === 'string' ? pStatus.replace(/_/g, ' ') : 'unknown'}
-              </StatusBadge>
+          { label: "Outreach Targets", value: stats?.targets ?? "—", icon: Users },
+          { label: "Active Brands", value: stats?.brands ?? "—", icon: Share2 },
+          { label: "DMs Sent", value: outreachLog.length, icon: MessageSquare },
+        ].map((s, i) => (
+          <div key={i} className="rounded-lg border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</span>
+              <s.icon className="h-4 w-4 text-primary/60" />
             </div>
-          );
-        })}
+            <div className="mt-2 font-mono text-2xl font-bold text-foreground">{s.value}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Platform + Status Filters */}
-      <div className="flex flex-wrap gap-2">
-        {PLATFORMS.map(p => {
-          const PIcon = p.icon;
-          return (
-            <button key={p.key} onClick={() => setPlatform(p.key)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
-                platform === p.key
-                  ? "bg-primary/10 text-primary border border-primary/30"
-                  : "text-muted-foreground/50 border border-border/50 hover:text-muted-foreground"
-              )}>
-              <PIcon className="h-3 w-3" />
-              {p.label}
-            </button>
-          );
-        })}
-        <div className="h-6 w-px bg-border/50 mx-1" />
-        {STATUSES.map(s => (
-          <button key={s} onClick={() => setStatus(s)}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
-              status === s
-                ? "bg-primary/10 text-primary border border-primary/30"
-                : "text-muted-foreground/50 border border-transparent hover:text-muted-foreground"
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border/50 pb-px">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={cn("rounded-t-md px-4 py-2 text-xs font-semibold transition-all",
+              tab === t.key ? "border border-b-0 border-border/50 bg-card text-foreground" : "text-muted-foreground/50 hover:text-muted-foreground"
             )}>
-            {s}
+            {t.label} <span className="ml-1 text-[10px] text-muted-foreground">({t.count})</span>
           </button>
         ))}
       </div>
 
-      {/* Social Targets */}
-      <div className="rounded-lg border border-border/50 bg-card p-5">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Social Outreach Targets ({targets.length})
-        </h2>
-        <div className="max-h-96 space-y-1 overflow-auto">
-          {targets.length === 0 && <p className="text-sm text-muted-foreground/40">No targets loaded</p>}
-          {targets.slice(0, 25).map((t: any, i: number) => (
-            <div key={i} className="flex items-center gap-3 rounded px-3 py-2 transition-colors hover:bg-muted/50">
-              <Instagram className="h-3.5 w-3.5 text-status-pink/60" />
-              <span className="flex-1 truncate font-mono text-xs text-foreground">
-                {t.instagram_handle || t.handle || t.full_name || '—'}
-              </span>
-              <span className="text-[10px] text-muted-foreground">{t.city || ''}</span>
+      {/* TARGETS TAB */}
+      {tab === "targets" && (
+        <div>
+          <div className="mb-3 flex gap-1">
+            {["all", "Instagram", "TikTok", "Twitter"].map(p => (
+              <button key={p} onClick={() => setPlatformFilter(p)}
+                className={cn("rounded px-3 py-1 text-[10px] font-semibold transition-all",
+                  platformFilter === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                )}>{p === "all" ? "All" : p}</button>
+            ))}
+          </div>
+          <div className="overflow-hidden rounded-lg border border-border/50">
+            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-3 bg-secondary/50 px-4 py-2.5">
+              {["Handle", "Platform", "City", "Followers", "Status"].map(h => (
+                <span key={h} className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{h}</span>
+              ))}
+            </div>
+            {targets.map((t: any) => {
+              const PIcon = PLATFORM_ICONS[t.platform] || Share2;
+              return (
+                <div key={t.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] items-center gap-3 border-t border-border/30 bg-card px-4 py-3 hover:bg-card/80">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{t.handle}</p>
+                    {t.full_name && <p className="text-[10px] text-muted-foreground">{t.full_name}</p>}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <PIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{t.platform}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{t.city || "—"}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{t.followers?.toLocaleString() || "—"}</span>
+                  <StatusBadge variant={t.status === "active" ? "success" : t.status === "messaged" ? "info" : "default"}>{t.status || "—"}</StatusBadge>
+                </div>
+              );
+            })}
+            {targets.length === 0 && <div className="px-4 py-8 text-center text-sm text-muted-foreground/40">No targets yet</div>}
+          </div>
+        </div>
+      )}
+
+      {/* OUTREACH LOG TAB */}
+      {tab === "outreach" && (
+        <div className="space-y-2">
+          {outreachLog.length === 0 && <div className="rounded-lg border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground/40">No outreach logged yet</div>}
+          {outreachLog.map((log: any) => (
+            <div key={log.id} className="rounded-md border border-border/30 bg-card p-3 hover:border-primary/20">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{log.handle || log.target_handle || "—"}</p>
+                <span className="font-mono text-[10px] text-muted-foreground">{log.created_at ? format(new Date(log.created_at), "MMM d HH:mm") : "—"}</span>
+              </div>
+              {log.message && <p className="mt-1 text-xs text-muted-foreground">{log.message.substring(0, 200)}</p>}
             </div>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Scheduled Posts */}
-      {scheduled.length > 0 && (
-        <div className="rounded-lg border border-border/50 bg-card p-5">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Scheduled Posts ({scheduled.length})
-          </h2>
-          <div className="space-y-2">
-            {scheduled.map((s: any, i: number) => (
-              <div key={i} className="flex items-center gap-3 rounded-md border border-border/30 bg-secondary/50 p-3">
-                <Calendar className="h-4 w-4 text-status-info/60" />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm text-foreground">{s.content || s.message || '—'}</p>
-                </div>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {s.scheduled_at ? new Date(s.scheduled_at).toLocaleDateString() : '—'}
-                </span>
-              </div>
-            ))}
-          </div>
+      {/* BRAND ACCOUNTS TAB */}
+      {tab === "calendar" && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {brandRegistry.map((b: any) => (
+            <div key={b.brand_key} className="rounded-lg border border-border/50 bg-card p-4 transition-all hover:border-primary/30"
+              style={{ borderLeftColor: "hsl(var(--primary))", borderLeftWidth: 3 }}>
+              <p className="text-sm font-semibold text-foreground">{b.brand_name}</p>
+              <p className="text-[10px] text-muted-foreground">{b.division}</p>
+              {b.instagram && <p className="mt-2 text-xs text-status-purple">{b.instagram}</p>}
+            </div>
+          ))}
         </div>
       )}
     </div>
