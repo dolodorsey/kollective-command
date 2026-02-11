@@ -79,7 +79,7 @@ const Commands = () => {
               <span className="truncate font-mono text-sm font-medium text-foreground">{cmd.command_type}</span>
               <StatusBadge variant="default">{cmd.scope || 'global'}</StatusBadge>
               <div className="flex items-center gap-2">
-                <span className={cn("h-1.5 w-1.5 rounded-full", status === 'running' ? "animate-pulse bg-status-success" : `bg-${cfg.variant === 'success' ? 'status-success' : cfg.variant === 'error' ? 'status-error' : 'status-info'}`)}
+                <span className="h-1.5 w-1.5 rounded-full"
                   style={{ backgroundColor: `hsl(var(--status-${cfg.variant === 'default' ? 'info' : cfg.variant}))` }} />
                 <span className={cn("text-xs capitalize", cfg.color)}>{status}</span>
               </div>
