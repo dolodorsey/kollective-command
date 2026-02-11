@@ -120,7 +120,7 @@ const Chat = () => {
               className={cn(
                 "flex items-center gap-2 rounded-t-md px-4 py-2.5 text-xs font-semibold transition-all",
                 active
-                  ? \`bg-card border border-b-0 border-border/50 \${t.color}\`
+                  ? `bg-card border border-b-0 border-border/50 ${t.color}`
                   : "text-muted-foreground/50 hover:text-muted-foreground"
               )}
             >
@@ -140,7 +140,7 @@ const Chat = () => {
                 <div className="text-center">
                   <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground/20" />
                   <p className="mt-3 text-sm text-muted-foreground/40">
-                    {tab === "notes" ? "Your private notes and intentions" : \`Message \${TABS.find(t => t.key === tab)?.label} — connected via n8n\`}
+                    {tab === "notes" ? "Your private notes and intentions" : `Message ${TABS.find(t => t.key === tab)?.label} — connected via n8n`}
                   </p>
                 </div>
               </div>
@@ -168,10 +168,10 @@ const Chat = () => {
                           onClick={() => handleAction(a.label, msg.text)}
                           className="flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold transition-all hover:brightness-125"
                           style={{
-                            backgroundColor: \`hsl(var(--\${a.color}) / 0.08)\`,
-                            color: \`hsl(var(--\${a.color}))\`,
+                            backgroundColor: `hsl(var(--${a.color}) / 0.08)`,
+                            color: `hsl(var(--${a.color}))`,
                             borderWidth: 1,
-                            borderColor: \`hsl(var(--\${a.color}) / 0.2)\`,
+                            borderColor: `hsl(var(--${a.color}) / 0.2)`,
                           }}
                         >
                           <AIcon className="h-3 w-3" />
@@ -201,7 +201,7 @@ const Chat = () => {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder={\`Message \${TABS.find(t => t.key === tab)?.label}...\`}
+              placeholder={`Message ${TABS.find(t => t.key === tab)?.label}...`}
               disabled={loading}
               className="flex-1 rounded-md border border-border/50 bg-input px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/40 focus:border-primary/40 disabled:opacity-50"
             />
