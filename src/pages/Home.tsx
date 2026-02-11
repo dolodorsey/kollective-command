@@ -86,7 +86,18 @@ const Home = () => {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  // Events from Supabase are fetched below
+  const { data: nextEvents = [] } = useQuery({
+    queryKey: ['next-events'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('events')
+        .select('id, title, city, date')
+        .gte('date', new Date().toISOString())
+        .order('date', { ascending: true })
+        .limit(5);
+      return (data || []).map((e: any) => ({ name: e.title, city: e.city, date: e.date }));
+    },
+  });
 
   const modeConfig: Record<string, { icon: React.ElementType; label: string; variant: 'success' | 'warning' | 'error'; affected: number }> = {
     normal: { icon: Shield, label: 'Normal', variant: 'success', affected: 0 },
