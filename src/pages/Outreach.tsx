@@ -1,168 +1,169 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { sendCommand } from "@/lib/commands";
-import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { CommandConfirmDialog } from "@/components/CommandConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, FileText, Send, MessageSquare, Gauge } from "lucide-react";
+import { Send, Users, Target, Mail, Plus, ChevronRight, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
-
-const PIPELINES = [
-  { key: 'customer', label: 'Customer', stages: ['Prospect', 'Contacted', 'Qualified', 'Proposal', 'Won'] },
-  { key: 'pr', label: 'PR', stages: ['Identified', 'Pitched', 'Follow-up', 'Coverage', 'Published'] },
-  { key: 'business', label: 'Business', stages: ['Lead', 'Meeting', 'Negotiation', 'Contract', 'Active'] },
-  { key: 'followup', label: 'Follow-up', stages: ['Pending', 'Scheduled', 'Sent', 'Replied', 'Closed'] },
-  { key: 'influencer', label: 'Influencer', stages: ['Discovered', 'Reached', 'Negotiating', 'Active', 'Completed'] },
-];
+import { cn } from "@/lib/utils";
 
 const Outreach = () => {
-  const [confirm, setConfirm] = useState({ open: false, title: '', description: '', action: () => {} });
-  const [throttle, setThrottle] = useState({ perDay: 50, perHour: 10 });
-
-  const { data: prContactsCount = 0 } = useQuery({
-    queryKey: ['pr-contacts-count'],
+  const { data: pitches = [] } = useQuery({
+    queryKey: ["pr-pitches"],
     queryFn: async () => {
-      const { count } = await supabase.from('pr_contacts').select('*', { count: 'exact', head: true });
-      return count || 0;
-    },
-  });
-
-  const { data: pitchesCount = 0 } = useQuery({
-    queryKey: ['pitches-count'],
-    queryFn: async () => {
-      const { count } = await supabase.from('pr_pitches').select('*', { count: 'exact', head: true });
-      return count || 0;
-    },
-  });
-
-  const { data: prActivity = [] } = useQuery({
-    queryKey: ['pr-activity'],
-    queryFn: async () => {
-      const { data } = await supabase.from('pr_outreach_activity').select('*').order('created_at', { ascending: false }).limit(50);
+      const { data } = await supabase.from("pr_pitches").select("*").order("created_at", { ascending: false }).limit(20);
       return data || [];
     },
   });
 
-  const sentCount = prActivity.filter((a: any) => a.step === 'sent' || a.status === 'sent').length;
-  const repliedCount = prActivity.filter((a: any) => a.step === 'replied' || a.status === 'replied').length;
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["pr-contacts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("pr_contacts").select("*").order("score", { ascending: false }).limit(50);
+      return data || [];
+    },
+  });
+
+  const { data: activity = [] } = useQuery({
+    queryKey: ["pr-activity"],
+    queryFn: async () => {
+      const { data } = await supabase.from("pr_outreach_activity").select("*, pr_contacts(reporter_name, outlet_name), pr_pitches(pitch_title)").order("created_at", { ascending: false }).limit(30);
+      return data || [];
+    },
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ["pr-stats"],
+    queryFn: async () => {
+      const [totalContacts, activePitches, totalTouches] = await Promise.all([
+        supabase.from("pr_contacts").select("*", { count: "exact", head: true }),
+        supabase.from("pr_pitches").select("*", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("pr_outreach_activity").select("*", { count: "exact", head: true }),
+      ]);
+      return {
+        contacts: totalContacts.count ?? 0,
+        activePitches: activePitches.count ?? 0,
+        touches: totalTouches.count ?? 0,
+      };
+    },
+  });
+
+  const statusVariant = (s: string): "success" | "warning" | "error" | "info" | "default" => {
+    const map: Record<string, "success" | "warning" | "error" | "info" | "default"> = {
+      Active: "success", active: "success", sent: "info", replied: "success",
+      follow_up_1: "warning", follow_up_2: "warning", pitched: "info",
+      bounced: "error", declined: "error", interested: "success",
+    };
+    return map[s] || "default";
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h1 className="text-2xl font-bold text-foreground">Outreach Command</h1>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="PR Contacts" value={prContactsCount} icon={Users} />
-        <StatCard label="Active Pitches" value={pitchesCount} icon={FileText} />
-        <StatCard label="Outreach Sent" value={sentCount} icon={Send} />
-        <StatCard label="Replied" value={repliedCount} icon={MessageSquare} />
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">PR Outreach</h1>
+        <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />New Pitch</Button>
       </div>
 
-      {/* Pipelines */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-5">
-        {PIPELINES.map(pipe => (
-          <div key={pipe.key} className="rounded-lg border border-border/50 bg-card p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">{pipe.label}</h3>
-            <div className="space-y-2">
-              {pipe.stages.map((stage, i) => (
-                <div key={stage} className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{stage}</span>
-                  <div className="h-1.5 w-16 rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-primary/60" style={{ width: `${Math.max(10, 100 - i * 20)}%` }} />
-                  </div>
-                </div>
-              ))}
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Media Contacts", value: stats?.contacts ?? "—", icon: Users },
+          { label: "Active Pitches", value: stats?.activePitches ?? "—", icon: Target },
+          { label: "Total Touches", value: stats?.touches ?? "—", icon: Mail },
+        ].map((s, i) => (
+          <div key={i} className="rounded-lg border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</span>
+              <s.icon className="h-4 w-4 text-primary/60" />
             </div>
+            <div className="mt-2 font-mono text-2xl font-bold text-foreground">{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button
-          variant="destructive"
-          onClick={() => setConfirm({
-            open: true,
-            title: 'Launch PR Blast',
-            description: 'This will send outreach to all active PR contacts. This is a high-risk action.',
-            action: () => sendCommand('outreach.launch', { type: 'pr', scope: 'global' }, 'high'),
-          })}
-        >
-          <Send className="mr-2 h-4 w-4" /> Launch PR Blast
-        </Button>
-        <Button variant="command" onClick={() => sendCommand('workflow.run_now', { workflow_id: 'yGGm5IVIqFGprFBn', name: 'Scheduled Messenger' })}>
-          Run Follow-ups
-        </Button>
-      </div>
-
-      {/* Throttle Controls */}
+      {/* Active Pitches */}
       <div className="rounded-lg border border-border/50 bg-card p-5">
-        <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          <Gauge className="h-4 w-4" /> Throttle Controls
-        </h2>
-        <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Targets / Day</label>
-            <Input type="number" value={throttle.perDay} onChange={e => setThrottle(p => ({ ...p, perDay: +e.target.value }))} className="w-24 bg-secondary" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Targets / Hour</label>
-            <Input type="number" value={throttle.perHour} onChange={e => setThrottle(p => ({ ...p, perHour: +e.target.value }))} className="w-24 bg-secondary" />
-          </div>
-          <Button variant="command" size="sm" onClick={() => sendCommand('throttle.set', { scope: 'global', targets_per_day: throttle.perDay, targets_per_hour: throttle.perHour })}>
-            Set Throttle
-          </Button>
-        </div>
-      </div>
-
-      {/* PR Activity */}
-      <div className="rounded-lg border border-border/50 bg-card p-5">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">PR Activity</h2>
-        <div className="overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/30 hover:bg-transparent">
-                <TableHead className="text-muted-foreground">Brand</TableHead>
-                <TableHead className="text-muted-foreground">Channel</TableHead>
-                <TableHead className="text-muted-foreground">Step</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="text-muted-foreground">Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {prActivity.map((item: any, i: number) => (
-                <TableRow key={i} className="border-border/20 hover:bg-muted/30">
-                  <TableCell className="text-sm text-foreground">{item.brand || item.tenant || '—'}</TableCell>
-                  <TableCell><StatusBadge variant="info">{item.channel || 'email'}</StatusBadge></TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{item.step || '—'}</TableCell>
-                  <TableCell>
-                    <StatusBadge variant={item.status === 'sent' ? 'success' : item.status === 'failed' ? 'error' : 'default'}>
-                      {item.status || '—'}
-                    </StatusBadge>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {item.created_at ? format(new Date(item.created_at), 'MMM d, HH:mm') : '—'}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {prActivity.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No activity</TableCell></TableRow>
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Pitches</h2>
+        <div className="space-y-3">
+          {pitches.length === 0 && <p className="text-sm text-muted-foreground/40">No pitches yet</p>}
+          {pitches.map((p: any) => (
+            <div key={p.id} className="rounded-md border border-border/30 bg-secondary/30 p-4 transition-colors hover:border-primary/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{p.pitch_title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{p.pitch_angle?.substring(0, 120)}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusBadge variant={statusVariant(p.status)}>{p.status}</StatusBadge>
+                  <StatusBadge variant={p.priority === "high" ? "error" : "default"}>{p.priority}</StatusBadge>
+                </div>
+              </div>
+              {p.target_outlets && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {(p.target_outlets || []).map((outlet: string, i: number) => (
+                    <span key={i} className="rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{outlet}</span>
+                  ))}
+                </div>
               )}
-            </TableBody>
-          </Table>
+            </div>
+          ))}
         </div>
       </div>
 
-      <CommandConfirmDialog
-        open={confirm.open}
-        onOpenChange={(open) => setConfirm(p => ({ ...p, open }))}
-        title={confirm.title}
-        description={confirm.description}
-        onConfirm={() => { confirm.action(); setConfirm(p => ({ ...p, open: false })); }}
-      />
+      {/* Contact List */}
+      <div className="rounded-lg border border-border/50 bg-card">
+        <div className="flex items-center justify-between border-b border-border/30 px-5 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Media Contacts</h2>
+          <span className="text-[10px] text-muted-foreground">{contacts.length} contacts</span>
+        </div>
+        <div className="max-h-96 overflow-auto">
+          {contacts.map((c: any) => (
+            <div key={c.contact_id} className="flex items-center gap-3 border-b border-border/20 px-5 py-3 last:border-0 transition-colors hover:bg-secondary/30">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                {(c.reporter_name || "?")[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{c.reporter_name}</p>
+                <p className="truncate text-xs text-muted-foreground">{c.outlet_name} · {c.beat} · {c.city}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {c.score && (
+                  <span className={cn("rounded px-1.5 py-0.5 font-mono text-[10px] font-bold",
+                    c.score >= 80 ? "bg-status-success/10 text-status-success" :
+                    c.score >= 50 ? "bg-status-warning/10 text-status-warning" :
+                    "bg-muted text-muted-foreground"
+                  )}>{c.score}</span>
+                )}
+                <StatusBadge variant={statusVariant(c.status)}>{c.status}</StatusBadge>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Activity Timeline */}
+      <div className="rounded-lg border border-border/50 bg-card p-5">
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Activity Timeline</h2>
+        <div className="space-y-2">
+          {activity.length === 0 && <p className="text-sm text-muted-foreground/40">No activity yet</p>}
+          {activity.map((a: any) => (
+            <div key={a.id} className="flex items-center gap-3 rounded px-3 py-2 transition-colors hover:bg-muted/30">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <div className="flex-1">
+                <span className="text-xs font-medium text-foreground">
+                  {a.activity_type?.replace(/_/g, " ")}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {" "}→ {a.pr_contacts?.reporter_name || "Unknown"} ({a.pr_contacts?.outlet_name || ""})
+                </span>
+              </div>
+              <StatusBadge variant={statusVariant(a.activity_type)} className="text-[8px]">{a.channel || "—"}</StatusBadge>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {a.created_at ? format(new Date(a.created_at), "MMM d HH:mm") : "—"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
