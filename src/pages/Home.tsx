@@ -60,8 +60,8 @@ const Home = () => {
         supabase.from('ledger_actions').select('action_type, tenant_id, created_at').order('created_at', { ascending: false }).limit(10),
       ]);
       const items = [
-        ...(cmds.data || []).map((c: any) => ({ type: 'command', label: c.command_type, status: c.scope, time: c.executed_at })),
-        ...(ledger.data || []).map((l: any) => ({ type: 'ledger', label: l.action_type, status: l.tenant_id, time: l.created_at })),
+        ...(cmds.data || []).map((c: any) => ({ type: 'command', label: c.command_type, status: c.scope, time: c.created_at })),
+        ...(ledger.data || []).map((l: any) => ({ type: 'ledger', label: l.action_type, status: l.tenant, time: l.created_at })),
       ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 20);
       return items;
     },
