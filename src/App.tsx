@@ -7,6 +7,7 @@ import { Layout } from "@/components/Layout";
 import Home from "./pages/Home";
 import Commands from "./pages/Commands";
 import Chat from "./pages/Chat";
+import Events from "./pages/Events";
 import Outreach from "./pages/Outreach";
 import Leads from "./pages/Leads";
 import InboxPage from "./pages/InboxPage";
@@ -18,12 +19,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
 const App = () => (
@@ -37,6 +33,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/commands" element={<Commands />} />
             <Route path="/chat" element={<Chat />} />
+            <Route path="/events" element={<Events />} />
             <Route path="/outreach" element={<Outreach />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/inbox" element={<InboxPage />} />
