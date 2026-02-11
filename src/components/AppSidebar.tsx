@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Terminal, MessageSquare, Send, Target, Inbox, Share2,
-  CheckSquare, FileOutput, Activity,
+  CheckSquare, FileOutput, Activity, Settings,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { title: "TASKS", url: "/tasks", icon: CheckSquare },
   { title: "OUTPUTS", url: "/outputs", icon: FileOutput },
   { title: "SYSTEM", url: "/system", icon: Activity },
+  { title: "SETTINGS", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
