@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Send, Target, Inbox, Share2,
+  LayoutDashboard, Terminal, MessageSquare, Send, Target, Inbox, Share2,
   CheckSquare, FileOutput, Activity,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -13,6 +13,8 @@ import {
 
 const NAV_ITEMS = [
   { title: "HOME", url: "/", icon: LayoutDashboard },
+  { title: "COMMANDS", url: "/commands", icon: Terminal },
+  { title: "CHAT", url: "/chat", icon: MessageSquare },
   { title: "OUTREACH", url: "/outreach", icon: Send },
   { title: "LEADS", url: "/leads", icon: Target },
   { title: "INBOX", url: "/inbox", icon: Inbox },
@@ -53,22 +55,27 @@ export function AppSidebar() {
           </div>
         )}
       </SidebarHeader>
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map((item) => {
-                const isActive = item.url === "/"
-                  ? location.pathname === "/"
+                const isActive = item.url === '/'
+                  ? location.pathname === '/'
                   : location.pathname.startsWith(item.url);
+                const showBadge = item.title === 'TASKS' && pendingCount > 0;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                      <Link to={item.url} className="relative">
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                    >
+                      <Link to={item.url}>
                         <item.icon className="h-4 w-4" />
-                        <span className="text-xs tracking-wider">{item.title}</span>
-                        {item.title === "TASKS" && pendingCount > 0 && !isCollapsed && (
-                          <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                        <span className="text-[11px] font-medium tracking-wider">{item.title}</span>
+                        {showBadge && !isCollapsed && (
+                          <span className="ml-auto rounded-full bg-sidebar-primary px-1.5 py-0.5 text-[9px] font-bold text-sidebar-primary-foreground">
                             {pendingCount}
                           </span>
                         )}
@@ -81,11 +88,14 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border px-4 py-4">
+      <SidebarFooter className="border-t border-sidebar-border p-3">
         {!isCollapsed && (
-          <div>
-            <p className="text-xs font-semibold tracking-wider text-sidebar-foreground">DR. DORSEY</p>
-            <p className="mt-0.5 font-mono text-[10px] text-sidebar-foreground/40">MCP v2.0</p>
+          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar-primary/10 text-xs font-bold text-sidebar-primary">D</div>
+            <div>
+              <p className="text-[11px] font-medium text-sidebar-foreground">Dr. Dorsey</p>
+              <p className="text-[9px] text-sidebar-foreground/40">Operator</p>
+            </div>
           </div>
         )}
       </SidebarFooter>
