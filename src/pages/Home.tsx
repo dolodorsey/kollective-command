@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { sendCommand } from "@/lib/commands";
-import { DIVISIONS, EVENTS_2026 } from "@/lib/constants";
+import { DIVISIONS } from "@/lib/constants";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ const Home = () => {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  const nextEvents = EVENTS_2026.filter(e => new Date(e.date) >= new Date()).slice(0, 5);
+  // Events from Supabase are fetched below
 
   const modeConfig: Record<string, { icon: React.ElementType; label: string; variant: 'success' | 'warning' | 'error'; affected: number }> = {
     normal: { icon: Shield, label: 'Normal', variant: 'success', affected: 0 },
