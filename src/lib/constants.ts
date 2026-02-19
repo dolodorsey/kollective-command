@@ -2,11 +2,11 @@ export const DIVISIONS = [
   { key: 'casper', name: 'CASPER GROUP', sub: 'Food & Beverage', color: '#D4603A', icon: '🍽',
     brands: ['Angel Wings','Pasta Bish','Taco Yaki','Patty Daddy','Espresso Co','Morning After',"Toss'd",'Sweet Tooth','Mojo Juice','Mr. Oyster'] },
   { key: 'huglife', name: 'HUGLIFE', sub: 'Events & Experiences', color: '#9C27B0', icon: '🎪',
-    brands: ['Espresso','Gangsta Gospel',"Sunday's Best",'Shut Up & Dance','Napkin King','Paparazzi','Pawchella','Black Ball','Beauty & The Beast'] },
+    brands: ['NOIR','Gangsta Gospel',"Sunday's Best",'REMIX','WRST BHVR : NAPKIN WARS','Paparazzi','Pawchella','Black Ball','Beauty & The Beast','Taste of Art','Haunted House',"Monster's Ball",'Snow Ball','Winter Wonderland'] },
   { key: 'umbrella', name: 'UMBRELLA GROUP', sub: 'Services', color: '#1E88E5', icon: '☂',
     brands: ['Umbrella Auto Exchange','Umbrella Injury Network','Umbrella Realty Group','Umbrella Clean Services',"The People's Dept.",'Umbrella Accounting','The Brand Studio','The Automation Office','The Mind Studio','Umbrella Legal & Compliance'] },
   { key: 'bodegea', name: 'BODEGEA', sub: 'Products', color: '#43A047', icon: '📦',
-    brands: ['Infinity Water','Pronto Energy','Noir','Stush'] },
+    brands: ['Infinity Water','Pronto Energy','Noir (Espresso Liqueur)','Stush'] },
   { key: 'scented', name: 'SCENTED FLOWERS', sub: 'Museum Series', color: '#E91E63', icon: '🌺',
     brands: ['Forever Futbol','Living Legends','Women Make The World','Fallen Stars'] },
   { key: 'opulence', name: 'OPULENCE DESIGNS', sub: 'Art', color: '#FF9800', icon: '🎨',
@@ -38,50 +38,6 @@ export const WORKFLOWS = [
   { id: 'FJfgKLj7sXHqYBjR', name: 'LINDA Dispatch', cat: 'system', webhook: '/webhook/linda' },
 ];
 
-export const EVENTS_2026 = [
-  { name: 'Espresso', date: '2026-04-17', city: 'DC', series: 'espresso' },
-  { name: 'Taste of Art', date: '2026-04-24', city: 'LA', series: 'tasteofart' },
-  { name: 'Shut Up & Dance', date: '2026-05-02', city: 'Charlotte', series: 'shutup' },
-  { name: 'Taste of Art', date: '2026-05-15', city: 'ATL', series: 'tasteofart' },
-  { name: 'Napkin King', date: '2026-05-23', city: 'ATL', series: 'napkin' },
-  { name: "Sunday's Best", date: '2026-05-24', city: 'TBD', series: 'sundays' },
-  { name: 'Espresso', date: '2026-05-29', city: 'LA', series: 'espresso' },
-  { name: 'Paparazzi', date: '2026-05-31', city: 'LA', series: 'paparazzi' },
-  { name: 'Espresso', date: '2026-06-05', city: 'Charlotte', series: 'espresso' },
-  { name: 'Taste of Art', date: '2026-06-12', city: 'DC', series: 'tasteofart' },
-  { name: 'Paparazzi (BET)', date: '2026-06-14', city: 'LA', series: 'paparazzi' },
-  { name: 'Gangsta Gospel', date: '2026-06-19', city: 'ATL', series: 'gangsta' },
-  { name: 'Birthday Houston', date: '2026-06-27', city: 'Houston', series: 'birthday' },
-  { name: 'Birthday ATL', date: '2026-07-02', city: 'ATL', series: 'birthday' },
-  { name: 'Birthday Vegas', date: '2026-07-04', city: 'Vegas', series: 'birthday' },
-  { name: "Sunday's Best", date: '2026-07-05', city: 'TBD', series: 'sundays' },
-  { name: 'Taste of Art', date: '2026-07-10', city: 'Houston', series: 'tasteofart' },
-  { name: 'Paparazzi', date: '2026-07-12', city: 'DC', series: 'paparazzi' },
-  { name: 'Napkin King', date: '2026-07-18', city: 'Houston', series: 'napkin' },
-  { name: 'Shut Up & Dance', date: '2026-07-25', city: 'ATL', series: 'shutup' },
-  { name: 'Espresso', date: '2026-07-31', city: 'LA', series: 'espresso' },
-  { name: 'Gangsta Gospel', date: '2026-08-01', city: 'Houston', series: 'gangsta' },
-  { name: 'Espresso', date: '2026-08-07', city: 'ATL', series: 'espresso' },
-  { name: 'Paparazzi', date: '2026-08-09', city: 'Charlotte', series: 'paparazzi' },
-  { name: 'Taste of Art', date: '2026-08-14', city: 'Houston', series: 'tasteofart' },
-  { name: 'Pawchella', date: '2026-08-22', city: 'ATL', series: 'pawchella' },
-  { name: 'Napkin King', date: '2026-08-29', city: 'LA', series: 'napkin' },
-  { name: 'Espresso', date: '2026-09-04', city: 'DC', series: 'espresso' },
-  { name: 'Gangsta Gospel', date: '2026-09-05', city: 'LA', series: 'gangsta' },
-  { name: "Sunday's Best", date: '2026-09-06', city: 'TBD', series: 'sundays' },
-  { name: 'Beauty & Beast', date: '2026-09-12', city: 'ATL', series: 'beauty' },
-  { name: 'Paparazzi', date: '2026-09-13', city: 'ATL', series: 'paparazzi' },
-  { name: 'Napkin King', date: '2026-09-19', city: 'Charlotte', series: 'napkin' },
-  { name: 'Shut Up & Dance', date: '2026-09-26', city: 'LA', series: 'shutup' },
-  { name: 'Haunted House', date: '2026-10-01', city: 'ATL', series: 'haunted' },
-  { name: 'Napkin King Finale', date: '2026-10-10', city: 'TBD', series: 'napkin' },
-  { name: "Monster's Ball", date: '2026-10-31', city: 'TBD', series: 'monsters' },
-  { name: 'Black Ball', date: '2026-11-21', city: 'ATL', series: 'blackball' },
-  { name: "Sunday's Best", date: '2026-11-29', city: 'TBD', series: 'sundays' },
-  { name: 'Taste of Art Basel', date: '2026-12-04', city: 'Miami', series: 'tasteofart' },
-  { name: 'Snow Ball', date: '2026-12-12', city: 'ATL', series: 'snowball' },
-];
-
 export const WORKFLOW_CATEGORIES: Record<string, { label: string; color: string }> = {
   content: { label: 'Content', color: 'text-status-warning' },
   outreach: { label: 'Outreach', color: 'text-status-info' },
@@ -92,3 +48,13 @@ export const WORKFLOW_CATEGORIES: Record<string, { label: string; color: string 
   ops: { label: 'Ops', color: 'text-muted-foreground' },
   system: { label: 'System', color: 'text-status-error' },
 };
+
+export const TEAM = [
+  { name: 'Sharky', role: 'Operations Lead', focus: ['Attorney (Skyler)', 'Rent/Lease', 'Food Vendors', 'LLC/Banking', 'Pinky Promise', 'Impact Center', 'Company Email/Docs/Logins', 'Social Media', 'Graphics'] },
+  { name: 'Nya', role: 'Field Operations', focus: ['10 Locations/Day', 'Food Vendor', 'Indeed Pool', 'Water/Energy Outreach', 'Legal Update'] },
+  { name: 'Alandra', role: 'Field Operations', focus: ['10 Locations/Day', 'Food Vendor', 'Indeed Pool', 'Water/Energy Outreach'] },
+  { name: 'Stephanie', role: 'Billing & Licensing', focus: ['Billing', 'Licensing Services'] },
+  { name: 'Samara', role: 'Personal', focus: ['Unemployment', 'Meta Glasses', 'Lottery Office', 'Shopify', 'Puff Logo'] },
+];
+
+export const CITIES = ['Atlanta, GA', 'Houston, TX', 'Los Angeles, CA', 'Washington, DC', 'Charlotte, NC', 'Las Vegas, NV', 'Miami, FL'];
