@@ -16,6 +16,7 @@ import Tasks from "./pages/Tasks";
 import Outputs from "./pages/Outputs";
 import SystemHealth from "./pages/SystemHealth";
 import Settings from "./pages/Settings";
+import BrandDetail from "./pages/BrandDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/outputs" element={<Outputs />} />
             <Route path="/system" element={<SystemHealth />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/brand/:brandKey" element={<BrandDetail />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
