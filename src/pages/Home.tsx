@@ -216,7 +216,7 @@ const Home = () => {
           {DIVISIONS.map(div => (
             <div key={div.key} className="group cursor-pointer rounded-lg border border-border/50 bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-gold-glow"
               style={{ borderLeftColor: div.color, borderLeftWidth: 3 }}
-              onClick={() => { const el = document.getElementById("div-" + div.key); if (el) el.classList.toggle("hidden"); }}>
+              onClick={() => navigate(`/division/${div.key}`)}>
               <div className="flex items-center gap-2">
                 <span className="text-lg">{div.icon}</span>
                 <div className="min-w-0">
@@ -225,17 +225,6 @@ const Home = () => {
                 </div>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{div.brands.length} brands</p>
-              <div id={"div-" + div.key} className="hidden mt-3 pt-3 border-t border-border/30 space-y-1">
-                {div.brands.map((b: string) => {
-                  const slug = b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
-                  return (
-                    <button key={b} onClick={(e) => { e.stopPropagation(); navigate("/brand/" + slug); }}
-                      className="block w-full text-left rounded px-2 py-1.5 text-xs text-foreground/80 hover:bg-primary/10 hover:text-primary transition-colors">
-                      {b}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           ))}
         </div>

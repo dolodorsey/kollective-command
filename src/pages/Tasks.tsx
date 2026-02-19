@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { NewTaskDialog } from "@/components/NewTaskDialog";
 import { CheckSquare, Clock, AlertCircle, Check, X, Plus, Eye, ChevronRight, Send, MessageSquare, Star } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -99,9 +100,12 @@ const Tasks = () => {
       <div className={cn("flex flex-col space-y-4", selectedItem ? "w-1/2" : "w-full")}>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Tasks & Approvals</h1>
-          <span className="rounded-md bg-status-warning/10 px-2.5 py-1 text-xs font-bold text-status-warning">
-            {stats?.pending ?? 0} pending
-          </span>
+          <div className="flex items-center gap-2">
+            <NewTaskDialog />
+            <span className="rounded-md bg-status-warning/10 px-2.5 py-1 text-xs font-bold text-status-warning">
+              {stats?.pending ?? 0} pending
+            </span>
+          </div>
         </div>
 
         {/* Stats */}
