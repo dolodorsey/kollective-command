@@ -17,6 +17,7 @@ import Outputs from "./pages/Outputs";
 import SystemHealth from "./pages/SystemHealth";
 import Settings from "./pages/Settings";
 import BrandDetail from "./pages/BrandDetail";
+import DivisionDetail from "./pages/DivisionDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/system" element={<SystemHealth />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/brand/:brandKey" element={<BrandDetail />} />
+            <Route path="/division/:slug" element={<DivisionDetail />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
