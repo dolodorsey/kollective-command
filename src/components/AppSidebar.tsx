@@ -1,24 +1,32 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Terminal, MessageSquare, Calendar, Send, Target, Inbox, Share2,
-  CheckSquare, FileOutput, Activity, Settings,
+  LayoutDashboard, Terminal, MessageSquare, Calendar, Send, Target, Inbox,
+  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
-  SidebarGroupContent, SidebarHeader, SidebarMenu,
+  SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 
-const NAV = [
+const MAIN_NAV = [
   { title: "HOME", url: "/", icon: LayoutDashboard },
   { title: "COMMANDS", url: "/commands", icon: Terminal },
   { title: "CHAT", url: "/chat", icon: MessageSquare },
+];
+
+const COMMS_NAV = [
+  { title: "EMAIL INBOX", url: "/email", icon: Mail },
+  { title: "INSTAGRAM DMS", url: "/ig", icon: Instagram },
+  { title: "PHONE / SMS", url: "/phone", icon: Phone },
+];
+
+const OPS_NAV = [
   { title: "EVENTS", url: "/events", icon: Calendar },
   { title: "OUTREACH", url: "/outreach", icon: Send },
   { title: "LEADS", url: "/leads", icon: Target },
-  { title: "INBOX", url: "/inbox", icon: Inbox },
   { title: "SOCIAL", url: "/social", icon: Share2 },
   { title: "TASKS", url: "/tasks", icon: CheckSquare },
   { title: "OUTPUTS", url: "/outputs", icon: FileOutput },
@@ -26,8 +34,39 @@ const NAV = [
   { title: "SETTINGS", url: "/settings", icon: Settings },
 ];
 
-export function AppSidebar() {
+function NavSection({ items, label }: { items: typeof MAIN_NAV; label?: string }) {
   const location = useLocation();
+  return (
+    <SidebarGroup>
+      {label && <SidebarGroupLabel className="text-[9px] tracking-[0.2em] text-sidebar-foreground/30 px-4">{label}</SidebarGroupLabel>}
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map(item => {
+            const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
+            return (
+              <SidebarMenuItem key={item.url}>
+                <SidebarMenuButton
+                  asChild
+                  className={active
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary font-bold"
+                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent"
+                  }
+                >
+                  <Link to={item.url}>
+                    <item.icon className="h-4 w-4" />
+                    <span className="text-[11px] tracking-wider">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
@@ -58,40 +97,18 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV.map(item => {
-                const active = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
-                const badge = item.title === "TASKS" && pendingCount > 0;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
-                      <Link to={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span className="text-[11px] font-medium tracking-wider">{item.title}</span>
-                        {badge && !collapsed && (
-                          <span className="ml-auto rounded-full bg-sidebar-primary px-1.5 py-0.5 text-[9px] font-bold text-sidebar-primary-foreground">
-                            {pendingCount}
-                          </span>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavSection items={MAIN_NAV} />
+        <NavSection items={COMMS_NAV} label="COMMUNICATIONS" />
+        <NavSection items={OPS_NAV} label="OPERATIONS" />
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border p-3">
+      <SidebarFooter className="border-t border-sidebar-border p-4">
         {!collapsed && (
-          <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sidebar-primary/10 text-xs font-bold text-sidebar-primary">D</div>
-            <div>
-              <p className="text-[11px] font-medium text-sidebar-foreground">Dr. Dorsey</p>
-              <p className="text-[9px] text-sidebar-foreground/40">Operator</p>
-            </div>
+          <div className="space-y-1">
+            <p className="text-[9px] font-mono text-sidebar-foreground/25">48+ brands · 8 divisions</p>
+            <p className="text-[9px] font-mono text-sidebar-foreground/25">17 GHL · 7 Gmail · 6 IG</p>
+            {pendingCount > 0 && (
+              <p className="text-[9px] font-mono text-status-warning">{pendingCount} pending approvals</p>
+            )}
           </div>
         )}
       </SidebarFooter>
