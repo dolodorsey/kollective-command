@@ -11,6 +11,9 @@ import Events from "./pages/Events";
 import Outreach from "./pages/Outreach";
 import Leads from "./pages/Leads";
 import InboxPage from "./pages/InboxPage";
+import EmailInbox from "./pages/EmailInbox";
+import IGInbox from "./pages/IGInbox";
+import PhoneInbox from "./pages/PhoneInbox";
 import Social from "./pages/Social";
 import Tasks from "./pages/Tasks";
 import Outputs from "./pages/Outputs";
@@ -39,6 +42,9 @@ const App = () => (
             <Route path="/outreach" element={<Outreach />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/email" element={<EmailInbox />} />
+            <Route path="/ig" element={<IGInbox />} />
+            <Route path="/phone" element={<PhoneInbox />} />
             <Route path="/social" element={<Social />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/outputs" element={<Outputs />} />
