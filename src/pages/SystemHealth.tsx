@@ -14,7 +14,7 @@ const SystemHealth = () => {
   const { data: failures = [] } = useQuery({
     queryKey: ["failures"],
     queryFn: async () => {
-      const { data } = await supabase.from("failure_log").select("*").order("created_at", { ascending: false }).limit(50);
+      const { data } = await supabase.from("failure_log").select("*").order("occurred_at", { ascending: false }).limit(50);
       return data || [];
     },
     refetchInterval: 15000,
