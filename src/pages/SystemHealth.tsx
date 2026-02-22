@@ -130,7 +130,7 @@ const SystemHealth = () => {
                 <p className="truncate text-xs text-muted-foreground">{f.error_message?.substring(0, 100) || "—"}</p>
               </div>
               <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                {f.created_at ? format(new Date(f.created_at), "MMM d HH:mm") : "—"}
+                {f.occurred_at ? format(new Date(f.occurred_at), "MMM d HH:mm") : "—"}
               </span>
               {!f.resolved && (
                 <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => handleResolve(f.id)}>
@@ -152,7 +152,7 @@ const SystemHealth = () => {
                 w.status === "healthy" ? "bg-status-success" : w.status === "degraded" ? "bg-status-warning" : "bg-status-error"
               )} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-foreground">{w.webhook_name || w.endpoint || "—"}</p>
+                <p className="truncate text-xs font-medium text-foreground">{w.workflow_name || w.endpoint || "—"}</p>
                 <p className="text-[9px] text-muted-foreground">{w.status}</p>
               </div>
             </div>
