@@ -1,13 +1,28 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { NewTaskDialog } from "@/components/NewTaskDialog";
-import { CheckSquare, Clock, AlertCircle, Check, X, Plus, Eye, ChevronRight, Send, MessageSquare, Star } from "lucide-react";
+import {
+  CheckSquare, Plus, Clock, AlertCircle, Check, X,
+  Eye, ChevronRight, Send, MessageSquare, Star, Trash2, Edit2,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { DIVISIONS } from "@/lib/constants";
+
+interface TaskItem {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  platform?: string;
+  due_date?: string;
+  metadata?: any;
+  created_at?: string;
+}
 
 interface ApprovalItem {
   id: string;
@@ -26,291 +41,339 @@ interface ApprovalItem {
   expires_at: string | null;
 }
 
+const TASK_STATUSES = ["todo", "in_progress", "blocked", "done"];
+const TASK_PRIORITIES = ["urgent", "high", "medium", "low"];
+
+// ClickUp spaces mapped
+const CLICKUP_SPACES = ["MCP Ops", "Casper Group", "HugLife Events", "Umbrella Group", "Museums", "Products", "Apps"];
+
+// Communication channels
+const COMM_CHANNELS = [
+  { key: "email", label: "Email", color: "text-status-error" },
+  { key: "ig_dm", label: "Instagram DM", color: "text-status-pink" },
+  { key: "sms", label: "SMS / Phone", color: "text-status-success" },
+  { key: "ghl", label: "GHL", color: "text-status-info" },
+  { key: "fb", label: "Facebook", color: "text-status-info" },
+];
+
 const Tasks = () => {
-  const [filter, setFilter] = useState("pending");
-  const [selectedItem, setSelectedItem] = useState<ApprovalItem | null>(null);
-  const [reviewNotes, setReviewNotes] = useState("");
+  const [view, setView] = useState<"tasks" | "approvals">("tasks");
+  const [filter, setFilter] = useState("all");
+  const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(null);
+  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTask, setNewTask] = useState({ title: "", description: "", priority: "medium", status: "todo", platform: "" });
   const queryClient = useQueryClient();
 
-  const { data: approvals = [] } = useQuery({
-    queryKey: ["approval-queue", filter],
+  // Tasks from DB
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks-list", filter],
     queryFn: async () => {
-      let q = supabase.from("approval_queue").select("*").order("created_at", { ascending: false }).limit(50);
-      if (filter !== "all") q = q.eq("status", filter);
+      let q = supabase.from("tasks").select("*").order("created_at", { ascending: false }).limit(100);
+      if (filter !== "all" && TASK_STATUSES.includes(filter)) q = q.eq("status", filter);
+      if (filter !== "all" && TASK_PRIORITIES.includes(filter)) q = q.eq("priority", filter);
       const { data } = await q;
+      return (data || []) as TaskItem[];
+    },
+  });
+
+  // Approvals
+  const { data: approvals = [] } = useQuery({
+    queryKey: ["approval-queue"],
+    queryFn: async () => {
+      const { data } = await supabase.from("approval_queue").select("*").order("created_at", { ascending: false }).limit(50);
       return (data || []) as ApprovalItem[];
     },
   });
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ["tasks-list"],
-    queryFn: async () => {
-      const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false }).limit(50);
-      return data || [];
-    },
-  });
-
+  // Stats
   const { data: stats } = useQuery({
-    queryKey: ["approval-stats"],
+    queryKey: ["task-stats"],
     queryFn: async () => {
-      const [pending, approved, rejected] = await Promise.all([
+      const [todo, inProg, blocked, done, pending, approved, rejected] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "todo"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "blocked"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "done"),
         supabase.from("approval_queue").select("*", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("approval_queue").select("*", { count: "exact", head: true }).eq("status", "approved"),
         supabase.from("approval_queue").select("*", { count: "exact", head: true }).eq("status", "rejected"),
       ]);
-      return { pending: pending.count ?? 0, approved: approved.count ?? 0, rejected: rejected.count ?? 0 };
+      return {
+        todo: todo.count ?? 0, inProg: inProg.count ?? 0, blocked: blocked.count ?? 0, done: done.count ?? 0,
+        pending: pending.count ?? 0, approved: approved.count ?? 0, rejected: rejected.count ?? 0,
+      };
     },
   });
 
-  const handleAction = async (id: string, action: "approved" | "rejected") => {
+  // Create task
+  const createTask = useMutation({
+    mutationFn: async (task: typeof newTask) => {
+      const { error } = await supabase.from("tasks").insert({
+        title: task.title,
+        description: task.description || null,
+        priority: task.priority,
+        status: task.status,
+        platform: task.platform || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Task created");
+      setShowCreate(false);
+      setNewTask({ title: "", description: "", priority: "medium", status: "todo", platform: "" });
+      queryClient.invalidateQueries({ queryKey: ["tasks-list"] });
+      queryClient.invalidateQueries({ queryKey: ["task-stats"] });
+    },
+    onError: () => toast.error("Failed to create task"),
+  });
+
+  // Update task status
+  const updateTask = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<TaskItem> }) => {
+      const { error } = await supabase.from("tasks").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Task updated");
+      queryClient.invalidateQueries({ queryKey: ["tasks-list"] });
+      queryClient.invalidateQueries({ queryKey: ["task-stats"] });
+    },
+  });
+
+  // Delete task
+  const deleteTask = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("tasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Task deleted");
+      setSelectedTask(null);
+      queryClient.invalidateQueries({ queryKey: ["tasks-list"] });
+      queryClient.invalidateQueries({ queryKey: ["task-stats"] });
+    },
+  });
+
+  // Approval action
+  const handleApproval = async (id: string, action: "approved" | "rejected") => {
     const { error } = await supabase.from("approval_queue").update({
-      status: action,
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: "dr.dorsey",
-      notes: reviewNotes || null,
+      status: action, reviewed_at: new Date().toISOString(), reviewed_by: "dr.dorsey",
     }).eq("id", id);
     if (!error) {
-      toast.success(action === "approved" ? "Approved and queued for execution" : "Rejected");
-      setSelectedItem(null);
-      setReviewNotes("");
+      toast.success(action === "approved" ? "Approved" : "Rejected");
+      setSelectedApproval(null);
       queryClient.invalidateQueries({ queryKey: ["approval-queue"] });
-      queryClient.invalidateQueries({ queryKey: ["approval-stats"] });
-    } else {
-      toast.error("Failed to update");
+      queryClient.invalidateQueries({ queryKey: ["task-stats"] });
     }
   };
 
-  const typeIcons: Record<string, typeof Send> = {
-    pr_pitch: Send, social_post: MessageSquare, email_blast: Send,
-  };
-  const typeColors: Record<string, string> = {
-    pr_pitch: "text-blue-400", social_post: "text-purple-400", email_blast: "text-amber-400",
-  };
-
-  const filters = [
-    { key: "pending", label: "Pending", count: stats?.pending },
-    { key: "approved", label: "Approved", count: stats?.approved },
-    { key: "rejected", label: "Rejected", count: stats?.rejected },
-    { key: "all", label: "All" },
-  ];
+  const priorityColors: Record<string, string> = { urgent: "text-status-error", high: "text-status-warning", medium: "text-status-info", low: "text-muted-foreground" };
+  const statusColors: Record<string, string> = { todo: "warning", in_progress: "info", blocked: "error", done: "success" };
 
   return (
-    <div className="flex h-full gap-4 animate-fade-in">
-      {/* LEFT: Queue List */}
-      <div className={cn("flex flex-col space-y-4", selectedItem ? "w-1/2" : "w-full")}>
+    <div className="flex h-[calc(100vh-7.5rem)] gap-4 animate-fade-in">
+      {/* LEFT */}
+      <div className={cn("flex flex-col gap-3", (selectedTask || selectedApproval) ? "w-1/2" : "w-full")}>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Tasks & Approvals</h1>
-          <div className="flex items-center gap-2">
-            <NewTaskDialog />
-            <span className="rounded-md bg-status-warning/10 px-2.5 py-1 text-xs font-bold text-status-warning">
-              {stats?.pending ?? 0} pending
-            </span>
+          <div className="flex gap-1">
+            {(["tasks", "approvals"] as const).map(v => (
+              <button key={v} onClick={() => { setView(v); setSelectedTask(null); setSelectedApproval(null); }}
+                className={cn("rounded-md px-4 py-1.5 text-xs font-semibold transition-all uppercase tracking-wider",
+                  view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
+                {v} ({v === "tasks" ? tasks.length : approvals.length})
+              </button>
+            ))}
           </div>
+          {view === "tasks" && (
+            <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(!showCreate)}>
+              <Plus className="h-3.5 w-3.5" />{showCreate ? "Cancel" : "New Task"}
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Pending", value: stats?.pending ?? "—", color: "text-status-warning" },
-            { label: "Approved", value: stats?.approved ?? "—", color: "text-status-success" },
-            { label: "Rejected", value: stats?.rejected ?? "—", color: "text-status-error" },
-          ].map((s, i) => (
-            <div key={i} className="rounded-lg border border-border/50 bg-card p-3 text-center">
-              <div className={cn("font-mono text-xl font-bold", s.color)}>{s.value}</div>
-              <div className="text-[10px] text-muted-foreground">{s.label}</div>
+        <div className="grid grid-cols-4 gap-2">
+          {view === "tasks" ? (
+            [
+              { label: "Todo", value: stats?.todo ?? 0, color: "text-status-warning" },
+              { label: "In Progress", value: stats?.inProg ?? 0, color: "text-status-info" },
+              { label: "Blocked", value: stats?.blocked ?? 0, color: "text-status-error" },
+              { label: "Done", value: stats?.done ?? 0, color: "text-status-success" },
+            ] : [
+              { label: "Pending", value: stats?.pending ?? 0, color: "text-status-warning" },
+              { label: "Approved", value: stats?.approved ?? 0, color: "text-status-success" },
+              { label: "Rejected", value: stats?.rejected ?? 0, color: "text-status-error" },
+              { label: "Total", value: approvals.length, color: "text-foreground" },
+            ]
+          ).map((s, i) => (
+            <div key={i} className="rounded-lg border border-border/50 bg-card p-2.5 text-center">
+              <div className={cn("font-mono text-lg font-bold", s.color)}>{s.value}</div>
+              <div className="text-[9px] text-muted-foreground">{s.label}</div>
             </div>
           ))}
         </div>
 
+        {/* Create form */}
+        {showCreate && (
+          <div className="rounded-lg border border-primary/20 bg-card p-4 space-y-3">
+            <input value={newTask.title} onChange={e => setNewTask(p => ({...p, title: e.target.value}))}
+              placeholder="Task title..." className="w-full rounded-md border border-border/50 bg-input px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40" />
+            <textarea value={newTask.description} onChange={e => setNewTask(p => ({...p, description: e.target.value}))}
+              placeholder="Description..." rows={2} className="w-full rounded-md border border-border/50 bg-input px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40 resize-y" />
+            <div className="flex gap-2">
+              <select value={newTask.priority} onChange={e => setNewTask(p => ({...p, priority: e.target.value}))}
+                className="rounded-md border border-border/50 bg-input px-3 py-1.5 text-xs text-foreground outline-none">
+                {TASK_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={newTask.status} onChange={e => setNewTask(p => ({...p, status: e.target.value}))}
+                className="rounded-md border border-border/50 bg-input px-3 py-1.5 text-xs text-foreground outline-none">
+                {TASK_STATUSES.map(s => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+              </select>
+              <select value={newTask.platform} onChange={e => setNewTask(p => ({...p, platform: e.target.value}))}
+                className="rounded-md border border-border/50 bg-input px-3 py-1.5 text-xs text-foreground outline-none">
+                <option value="">No channel</option>
+                {COMM_CHANNELS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                {CLICKUP_SPACES.map(s => <option key={s} value={`clickup:${s}`}>ClickUp: {s}</option>)}
+              </select>
+              <Button size="sm" onClick={() => newTask.title && createTask.mutate(newTask)}
+                disabled={!newTask.title || createTask.isPending}>Create</Button>
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
-        <div className="flex gap-1">
-          {filters.map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={cn("rounded-md px-3 py-1.5 text-xs font-semibold transition-all",
-                filter === f.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-              )}>
-              {f.label}{f.count !== undefined ? ` (${f.count})` : ""}
+        <div className="flex gap-1 flex-wrap">
+          {["all", ...(view === "tasks" ? [...TASK_STATUSES, ...TASK_PRIORITIES] : ["pending", "approved", "rejected"])].map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={cn("rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all",
+                filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}>
+              {f.replace("_", " ")}
             </button>
           ))}
         </div>
 
-        {/* Approval Items */}
-        <div className="flex-1 space-y-2 overflow-auto">
-          {approvals.map((item) => {
-            const TIcon = typeIcons[item.item_type] || CheckSquare;
-            const tColor = typeColors[item.item_type] || "text-muted-foreground";
-            const isSelected = selectedItem?.id === item.id;
-            return (
-              <button key={item.id} onClick={() => { setSelectedItem(item); setReviewNotes(""); }}
-                className={cn(
-                  "w-full rounded-lg border bg-card p-4 text-left transition-all hover:border-primary/30",
-                  isSelected ? "border-primary/50 ring-1 ring-primary/20" : "border-border/50",
-                  item.status === "pending" ? "border-l-2 border-l-status-warning" : ""
-                )}>
-                <div className="flex items-start gap-3">
-                  <TIcon className={cn("mt-0.5 h-4 w-4 shrink-0", tColor)} />
+        {/* List */}
+        <div className="flex-1 overflow-auto space-y-1.5">
+          {view === "tasks" ? (
+            tasks.length === 0 ? (
+              <div className="rounded-lg border border-border/50 bg-card p-12 text-center">
+                <CheckSquare className="mx-auto h-8 w-8 text-muted-foreground/20" />
+                <p className="mt-3 text-sm text-muted-foreground/50">No tasks yet. Create one above.</p>
+              </div>
+            ) : tasks.map(task => (
+              <button key={task.id} onClick={() => { setSelectedTask(task); setSelectedApproval(null); }}
+                className={cn("w-full rounded-lg border bg-card p-3 text-left transition-all hover:border-primary/30",
+                  selectedTask?.id === task.id ? "border-primary/50 ring-1 ring-primary/20" : "border-border/50",
+                  task.status === "blocked" ? "border-l-2 border-l-status-error" :
+                  task.status === "in_progress" ? "border-l-2 border-l-status-info" :
+                  task.status === "done" ? "border-l-2 border-l-status-success" : "border-l-2 border-l-status-warning")}>
+                <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
-                      {item.score >= 90 && <Star className="h-3 w-3 text-primary fill-primary" />}
+                    <div className={cn("text-xs font-semibold", task.status === "done" ? "text-muted-foreground line-through" : "text-foreground")}>
+                      {task.title}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.content_preview}</p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <StatusBadge variant={item.status === "pending" ? "warning" : item.status === "approved" ? "success" : "error"}>{item.status}</StatusBadge>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">{item.item_type?.replace(/_/g, " ")}</span>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">{item.brand_key}</span>
-                      {item.score && (
-                        <span className={cn("rounded px-1.5 py-0.5 font-mono text-[9px] font-bold",
-                          item.score >= 90 ? "bg-status-success/10 text-status-success" :
-                          item.score >= 70 ? "bg-status-warning/10 text-status-warning" :
-                          "bg-muted text-muted-foreground"
-                        )}>Score: {item.score}</span>
-                      )}
+                    <div className="flex gap-1.5 mt-1">
+                      <StatusBadge variant={(statusColors[task.status || ""] || "default") as any}>{task.status || "todo"}</StatusBadge>
+                      <span className={cn("text-[10px] font-semibold", priorityColors[task.priority || "medium"])}>{task.priority}</span>
+                      {task.platform && <StatusBadge variant="default">{task.platform}</StatusBadge>}
                     </div>
                   </div>
-                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/30" />
+                  {task.created_at && <span className="text-[9px] text-muted-foreground/40 shrink-0 ml-2">{format(new Date(task.created_at), "MMM d")}</span>}
                 </div>
               </button>
-            );
-          })}
-          {approvals.length === 0 && (
-            <div className="rounded-lg border border-border/50 bg-card p-12 text-center">
-              <CheckSquare className="mx-auto h-8 w-8 text-muted-foreground/20" />
-              <p className="mt-3 text-sm text-muted-foreground/40">No {filter} items</p>
-            </div>
+            ))
+          ) : (
+            approvals.filter((a: any) => filter === "all" || a.status === filter).map(item => (
+              <button key={item.id} onClick={() => { setSelectedApproval(item); setSelectedTask(null); }}
+                className={cn("w-full rounded-lg border bg-card p-3 text-left transition-all hover:border-primary/30",
+                  selectedApproval?.id === item.id ? "border-primary/50 ring-1 ring-primary/20" : "border-border/50",
+                  item.status === "pending" ? "border-l-2 border-l-status-warning" : "border-l-2 border-l-border")}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs font-semibold text-foreground">{item.title}</div>
+                    <div className="flex gap-1.5 mt-1">
+                      <StatusBadge variant="default">{item.brand_key}</StatusBadge>
+                      <StatusBadge variant="default">{item.item_type}</StatusBadge>
+                      <StatusBadge variant={item.status === "pending" ? "warning" : item.status === "approved" ? "success" : "error"}>{item.status}</StatusBadge>
+                    </div>
+                  </div>
+                  <span className="text-[9px] text-muted-foreground/40">{item.score}</span>
+                </div>
+              </button>
+            ))
           )}
         </div>
-
-        {/* Tasks Section */}
-        {tasks.length > 0 && (
-          <div className="rounded-lg border border-border/50 bg-card p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open Tasks ({tasks.length})</h3>
-            <div className="space-y-2">
-              {tasks.slice(0, 5).map((t: any) => (
-                <div key={t.id} className="flex items-center gap-2">
-                  <div className={cn("h-2 w-2 rounded-full",
-                    t.priority === "high" ? "bg-status-error" : "bg-status-warning")} />
-                  <p className="flex-1 truncate text-xs text-foreground">{t.title}</p>
-                  <span className="text-[9px] text-muted-foreground">{t.priority}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* RIGHT: Review Panel */}
-      {selectedItem && (
-        <div className="w-1/2 overflow-auto rounded-lg border border-border/50 bg-card">
-          {/* Header */}
-          <div className="border-b border-border/30 bg-secondary/30 px-6 py-4">
-            <div className="flex items-center justify-between">
+      {/* RIGHT — Detail */}
+      {(selectedTask || selectedApproval) && (
+        <div className="flex-1 rounded-lg border border-border/50 bg-card p-5 flex flex-col gap-4 overflow-auto">
+          {selectedTask && (
+            <>
               <div>
-                <p className="text-lg font-bold text-foreground">{selectedItem.title}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <StatusBadge variant={selectedItem.status === "pending" ? "warning" : selectedItem.status === "approved" ? "success" : "error"}>
-                    {selectedItem.status}
-                  </StatusBadge>
-                  <span className="text-xs text-muted-foreground">via {selectedItem.source_workflow}</span>
+                <h3 className="text-lg font-bold text-foreground">{selectedTask.title}</h3>
+                <div className="flex gap-2 mt-2">
+                  <StatusBadge variant={(statusColors[selectedTask.status || ""] || "default") as any}>{selectedTask.status || "todo"}</StatusBadge>
+                  <span className={cn("text-xs font-semibold", priorityColors[selectedTask.priority || "medium"])}>{selectedTask.priority}</span>
                 </div>
               </div>
-              <button onClick={() => setSelectedItem(null)} className="rounded p-1 text-muted-foreground hover:bg-muted">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Meta */}
-          <div className="border-b border-border/30 px-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Brand</p>
-                <p className="text-sm font-medium text-foreground">{selectedItem.brand_key}</p>
+              {selectedTask.description && (
+                <div className="rounded-lg bg-secondary p-3 text-sm text-foreground/80 whitespace-pre-wrap">{selectedTask.description}</div>
+              )}
+              <div className="flex gap-2 flex-wrap">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 w-full mb-1">Change Status</p>
+                {TASK_STATUSES.map(s => (
+                  <Button key={s} variant={selectedTask.status === s ? "default" : "outline"} size="sm"
+                    onClick={() => updateTask.mutate({ id: selectedTask.id, updates: { status: s } })}>
+                    {s.replace("_", " ")}
+                  </Button>
+                ))}
               </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Type</p>
-                <p className="text-sm font-medium text-foreground">{selectedItem.item_type?.replace(/_/g, " ")}</p>
+              <div className="flex gap-2 flex-wrap">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 w-full mb-1">Priority</p>
+                {TASK_PRIORITIES.map(p => (
+                  <Button key={p} variant={selectedTask.priority === p ? "default" : "outline"} size="sm"
+                    onClick={() => updateTask.mutate({ id: selectedTask.id, updates: { priority: p } })}>
+                    {p}
+                  </Button>
+                ))}
               </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Score</p>
-                <p className={cn("text-sm font-bold",
-                  selectedItem.score >= 90 ? "text-status-success" :
-                  selectedItem.score >= 70 ? "text-status-warning" : "text-status-error"
-                )}>{selectedItem.score}/100</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Expires</p>
-                <p className="text-sm text-foreground">
-                  {selectedItem.expires_at ? format(new Date(selectedItem.expires_at), "MMM d, HH:mm") : "No expiry"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Content Preview */}
-          <div className="border-b border-border/30 px-6 py-4">
-            <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Content Preview</p>
-            <div className="mt-2 rounded-md border border-border/30 bg-secondary/20 p-4">
-              <p className="whitespace-pre-wrap text-sm text-foreground">{selectedItem.content_preview}</p>
-            </div>
-          </div>
-
-          {/* Full Payload */}
-          <div className="border-b border-border/30 px-6 py-4">
-            <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Full Payload</p>
-            <div className="mt-2 max-h-48 overflow-auto rounded-md border border-border/30 bg-secondary/20 p-4">
-              <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-                {JSON.stringify(selectedItem.full_payload, null, 2)}
-              </pre>
-            </div>
-          </div>
-
-          {/* Review Notes */}
-          {selectedItem.status === "pending" && (
-            <div className="border-b border-border/30 px-6 py-4">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Review Notes (Optional)</p>
-              <textarea
-                value={reviewNotes}
-                onChange={e => setReviewNotes(e.target.value)}
-                placeholder="Add notes about your decision..."
-                className="mt-2 w-full rounded-md border border-border/50 bg-input p-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/30 focus:border-primary/40"
-                rows={3}
-              />
-            </div>
-          )}
-
-          {/* Previous Review */}
-          {selectedItem.reviewed_by && (
-            <div className="border-b border-border/30 px-6 py-4">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground/50">Review Decision</p>
-              <p className="mt-1 text-sm text-foreground">
-                {selectedItem.status} by {selectedItem.reviewed_by}
-                {selectedItem.reviewed_at && ` on ${format(new Date(selectedItem.reviewed_at), "MMM d, HH:mm")}`}
-              </p>
-              {selectedItem.notes && <p className="mt-1 text-xs text-muted-foreground">{selectedItem.notes}</p>}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          {selectedItem.status === "pending" && (
-            <div className="flex gap-3 px-6 py-5">
-              <Button className="flex-1 gap-1.5" variant="outline"
-                onClick={() => handleAction(String(selectedItem.id), "rejected")}
-                style={{ borderColor: "rgba(239,68,68,0.3)", color: "rgb(239,68,68)" }}>
-                <X className="h-4 w-4" />Reject
+              <Button variant="outline" size="sm" className="text-status-error border-status-error/20 hover:bg-status-error/10 w-fit mt-auto"
+                onClick={() => { if (confirm("Delete this task?")) deleteTask.mutate(selectedTask.id); }}>
+                <Trash2 className="h-3 w-3 mr-1" />Delete Task
               </Button>
-              <Button className="flex-1 gap-1.5" onClick={() => handleAction(String(selectedItem.id), "approved")}>
-                <Check className="h-4 w-4" />Approve & Execute
-              </Button>
-            </div>
+            </>
           )}
-
-          {/* Metadata */}
-          <div className="px-6 py-3">
-            <p className="text-[9px] text-muted-foreground/30">
-              Created {selectedItem.created_at ? format(new Date(selectedItem.created_at), "MMM d, HH:mm:ss") : "—"} | ID: {selectedItem.id}
-            </p>
-          </div>
+          {selectedApproval && (
+            <>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">{selectedApproval.title}</h3>
+                <div className="flex gap-2 mt-2">
+                  <StatusBadge variant="default">{selectedApproval.brand_key}</StatusBadge>
+                  <StatusBadge variant="default">{selectedApproval.item_type}</StatusBadge>
+                  <span className="text-xs text-muted-foreground">Score: {selectedApproval.score}</span>
+                </div>
+              </div>
+              <div className="flex-1 rounded-lg bg-secondary p-4 overflow-auto">
+                <pre className="text-sm text-foreground/90 font-mono whitespace-pre-wrap leading-relaxed">
+                  {selectedApproval.content_preview || JSON.stringify(selectedApproval.full_payload, null, 2)}
+                </pre>
+              </div>
+              {selectedApproval.status === "pending" && (
+                <div className="flex gap-3">
+                  <Button className="flex-1 gap-1.5 bg-status-success/10 text-status-success border border-status-success/20 hover:bg-status-success/20" variant="outline"
+                    onClick={() => handleApproval(selectedApproval.id, "approved")}>
+                    <Check className="h-3.5 w-3.5" />Approve
+                  </Button>
+                  <Button className="flex-1 gap-1.5 bg-status-error/10 text-status-error border border-status-error/20 hover:bg-status-error/20" variant="outline"
+                    onClick={() => handleApproval(selectedApproval.id, "rejected")}>
+                    <X className="h-3.5 w-3.5" />Reject
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
