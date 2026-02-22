@@ -194,16 +194,17 @@ const Tasks = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2">
-          {view === "tasks" ? (
-            [
-              { label: "Todo", value: stats?.todo ?? 0, color: "text-status-warning" },
-              { label: "In Progress", value: stats?.inProg ?? 0, color: "text-status-info" },
-              { label: "Blocked", value: stats?.blocked ?? 0, color: "text-status-error" },
-              { label: "Done", value: stats?.done ?? 0, color: "text-status-success" },
-            ] : [
-              { label: "Pending", value: stats?.pending ?? 0, color: "text-status-warning" },
-              { label: "Approved", value: stats?.approved ?? 0, color: "text-status-success" },
-              { label: "Rejected", value: stats?.rejected ?? 0, color: "text-status-error" },
+          {(view === "tasks"
+            ? [
+              { label: "Todo", value: (stats && stats.todo) || 0, color: "text-status-warning" },
+              { label: "In Progress", value: (stats && stats.inProg) || 0, color: "text-status-info" },
+              { label: "Blocked", value: (stats && stats.blocked) || 0, color: "text-status-error" },
+              { label: "Done", value: (stats && stats.done) || 0, color: "text-status-success" },
+            ]
+            : [
+              { label: "Pending", value: (stats && stats.pending) || 0, color: "text-status-warning" },
+              { label: "Approved", value: (stats && stats.approved) || 0, color: "text-status-success" },
+              { label: "Rejected", value: (stats && stats.rejected) || 0, color: "text-status-error" },
               { label: "Total", value: approvals.length, color: "text-foreground" },
             ]
           ).map((s, i) => (
