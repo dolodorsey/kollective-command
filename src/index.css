@@ -4,45 +4,45 @@
 
 @layer base {
   :root {
-    --background: 240 30% 3%;
-    --foreground: 0 0% 95%;
-    --card: 240 25% 7%;
-    --card-foreground: 0 0% 95%;
-    --popover: 240 22% 9%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 45 72% 47%;
-    --primary-foreground: 240 30% 3%;
-    --secondary: 240 17% 10%;
-    --secondary-foreground: 0 0% 85%;
-    --muted: 240 15% 14%;
-    --muted-foreground: 240 5% 55%;
-    --accent: 48 78% 59%;
-    --accent-foreground: 240 30% 3%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 240 15% 15%;
-    --input: 240 15% 12%;
-    --ring: 45 72% 47%;
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+    --primary: 240 15% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 94%;
+    --secondary-foreground: 240 10% 25%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 240 5% 92%;
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 5% 88%;
+    --input: 240 5% 92%;
+    --ring: 240 15% 15%;
     --radius: 0.5rem;
 
-    --sidebar-background: 240 30% 4%;
-    --sidebar-foreground: 0 0% 65%;
-    --sidebar-primary: 45 72% 47%;
-    --sidebar-primary-foreground: 240 30% 3%;
-    --sidebar-accent: 240 15% 10%;
-    --sidebar-accent-foreground: 45 72% 47%;
-    --sidebar-border: 240 15% 10%;
-    --sidebar-ring: 45 72% 47%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5% 35%;
+    --sidebar-primary: 240 15% 15%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 240 15% 15%;
+    --sidebar-border: 240 5% 90%;
+    --sidebar-ring: 240 15% 15%;
 
-    --status-success: 142 71% 45%;
-    --status-error: 0 84% 60%;
-    --status-warning: 25 95% 53%;
-    --status-info: 217 91% 60%;
-    --status-purple: 271 91% 65%;
-    --status-pink: 330 81% 60%;
-    --status-cyan: 189 94% 43%;
-    --gold: 45 72% 47%;
-    --gold-light: 48 78% 59%;
+    --status-success: 142 71% 35%;
+    --status-error: 0 84% 50%;
+    --status-warning: 25 95% 45%;
+    --status-info: 217 91% 50%;
+    --status-purple: 271 81% 55%;
+    --status-pink: 330 81% 50%;
+    --status-cyan: 189 94% 35%;
+    --gold: 45 72% 40%;
+    --gold-light: 48 78% 50%;
   }
 }
 
@@ -66,7 +66,6 @@
   animation: fade-in 0.35s ease-out;
 }
 
-/* Running job pulse */
 @keyframes status-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -76,8 +75,8 @@
   animation: status-pulse 2s ease-in-out infinite;
 }
 
-/* Scrollbar */
+/* Scrollbar — light */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: hsl(240 25% 5%); }
-::-webkit-scrollbar-thumb { background: hsl(240 15% 20%); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(45 72% 47% / 0.5); }
+::-webkit-scrollbar-track { background: hsl(0 0% 96%); }
+::-webkit-scrollbar-thumb { background: hsl(240 5% 78%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(240 10% 50%); }
