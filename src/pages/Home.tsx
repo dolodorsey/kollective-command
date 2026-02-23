@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { sendCommand } from "@/lib/commands";
-import { DIVISIONS } from "@/lib/constants";
+import { DIVISIONS, COMMAND_LABELS } from "@/lib/constants";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
