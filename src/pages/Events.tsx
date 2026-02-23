@@ -1,150 +1,176 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Calendar, MapPin, Star, Filter, ChevronRight } from "lucide-react";
-import { format, isPast, isThisMonth, isAfter } from "date-fns";
+import { DIVISIONS } from "@/lib/constants";
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isToday, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
-const SERIES_COLORS: Record<string, string> = {
-  espresso: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-  "taste-of-art": "bg-purple-500/10 text-purple-500 border-purple-500/20",
-  "shut-up-dance": "bg-pink-500/10 text-pink-500 border-pink-500/20",
-  paparazzi: "bg-red-500/10 text-red-500 border-red-500/20",
-  "sundays-best": "bg-sky-500/10 text-sky-500 border-sky-500/20",
-  "gangsta-gospel": "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
-  "napkin-king": "bg-orange-500/10 text-orange-500 border-orange-500/20",
-  birthday: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-  "world-cup": "bg-green-500/10 text-green-500 border-green-500/20",
-  pawchella: "bg-teal-500/10 text-teal-500 border-teal-500/20",
-  "black-ball": "bg-zinc-500/10 text-zinc-300 border-zinc-500/20",
-  "snow-ball": "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-};
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const Events = () => {
-  const [cityFilter, setCityFilter] = useState("all");
-  const [seriesFilter, setSeriesFilter] = useState("all");
-  const [showPast, setShowPast] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
+  const [brandFilter, setBrandFilter] = useState("all");
 
   const { data: events = [] } = useQuery({
-    queryKey: ["events-2026", cityFilter, seriesFilter],
+    queryKey: ["all-events"],
     queryFn: async () => {
-      let q = supabase.from("events").select("*").order("date", { ascending: true });
-      if (cityFilter !== "all") q = q.eq("city", cityFilter);
-      if (seriesFilter !== "all") q = q.eq("series", seriesFilter);
-      const { data } = await q;
+      const { data } = await supabase.from("events").select("*").order("date", { ascending: true });
       return data || [];
     },
   });
 
-  const now = new Date();
-  const upcoming = events.filter((e: any) => !isPast(new Date(e.date)));
-  const past = events.filter((e: any) => isPast(new Date(e.date)));
-  const nextEvent = upcoming[0];
+  const filtered = brandFilter === "all" ? events : events.filter((e: any) =>
+    (e.brand || "").includes(brandFilter) || (e.series || "").toLowerCase().includes(brandFilter)
+  );
 
-  const cities = [...new Set(events.map((e: any) => e.city))].sort();
-  const seriesList = [...new Set(events.map((e: any) => e.series).filter(Boolean))].sort();
+  const days = useMemo(() => {
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    const allDays = eachDayOfInterval({ start, end });
+    const startPad = start.getDay();
+    const padded = Array(startPad).fill(null).concat(allDays);
+    return padded;
+  }, [currentMonth]);
 
-  const displayEvents = showPast ? events : upcoming;
+  const eventsOnDay = (day: Date) => filtered.filter((e: any) => {
+    try { return isSameDay(parseISO(e.date), day); } catch { return false; }
+  });
+
+  const selectedEvents = selectedDay ? eventsOnDay(selectedDay) : [];
+  const upcoming = filtered.filter((e: any) => {
+    try { return parseISO(e.date) >= new Date(); } catch { return false; }
+  });
+
+  const seriesColors: Record<string, string> = {
+    "NOIR": "bg-purple-100 text-purple-700 border-purple-200",
+    "Taste of Art": "bg-orange-100 text-orange-700 border-orange-200",
+    "Shut Up & Dance": "bg-pink-100 text-pink-700 border-pink-200",
+    "Paparazzi": "bg-red-100 text-red-700 border-red-200",
+    "Sunday's Best": "bg-yellow-100 text-yellow-700 border-yellow-200",
+    "Gangsta Gospel": "bg-indigo-100 text-indigo-700 border-indigo-200",
+    "Napkin King": "bg-green-100 text-green-700 border-green-200",
+    "Pawchella": "bg-amber-100 text-amber-700 border-amber-200",
+    "Black Ball": "bg-gray-800 text-white border-gray-900",
+    "Snow Ball": "bg-blue-100 text-blue-700 border-blue-200",
+  };
+
+  const getEventColor = (e: any) => {
+    const s = e.series || e.title || "";
+    for (const [key, val] of Object.entries(seriesColors)) {
+      if (s.toLowerCase().includes(key.toLowerCase())) return val;
+    }
+    return "bg-blue-100 text-blue-700 border-blue-200";
+  };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Events Calendar</h1>
-        <span className="rounded-md bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{upcoming.length} upcoming</span>
+        <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
+        <div className="flex gap-1">
+          {(["calendar", "list"] as const).map(v => (
+            <button key={v} onClick={() => setViewMode(v)}
+              className={cn("rounded-md px-3 py-1.5 text-xs font-semibold uppercase",
+                viewMode === v ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}>{v}</button>
+          ))}
+        </div>
       </div>
 
-      {/* Next Event Highlight */}
-      {nextEvent && (
-        <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-6">
-          <div className="absolute right-4 top-4 text-5xl font-black text-primary/10">NEXT</div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/60">Next Event</p>
-          <h2 className="mt-1 text-xl font-bold text-foreground">{nextEvent.title}</h2>
-          <div className="mt-2 flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />{format(new Date(nextEvent.date), "EEEE, MMMM d, yyyy")}
-            </span>
-            <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />{nextEvent.city}
-            </span>
-            {nextEvent.is_featured && <Star className="h-4 w-4 text-primary fill-primary" />}
-          </div>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: "Total Events", value: events.length },
-          { label: "Cities", value: cities.length },
-          { label: "Series", value: seriesList.length },
-          { label: "Featured", value: events.filter((e: any) => e.is_featured).length },
-        ].map((s, i) => (
-          <div key={i} className="rounded-lg border border-border/50 bg-card p-3 text-center">
-            <div className="font-mono text-xl font-bold text-foreground">{s.value}</div>
-            <div className="text-[10px] text-muted-foreground">{s.label}</div>
-          </div>
+      {/* Brand filter */}
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        <button onClick={() => setBrandFilter("all")} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold", brandFilter === "all" ? "bg-blue-100 text-blue-700" : "text-muted-foreground hover:bg-muted")}>ALL ({events.length})</button>
+        {DIVISIONS.filter(d => d.key === "huglife" || d.key === "casper" || d.key === "scented" || d.key === "bodegea").map(d => (
+          <button key={d.key} onClick={() => setBrandFilter(d.key)} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap", brandFilter === d.key ? "bg-blue-100 text-blue-700" : "text-muted-foreground hover:bg-muted")}>{d.name}</button>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}
-          className="rounded-md border border-border/50 bg-input px-3 py-1.5 text-xs text-foreground">
-          <option value="all">All Cities</option>
-          {cities.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={seriesFilter} onChange={e => setSeriesFilter(e.target.value)}
-          className="rounded-md border border-border/50 bg-input px-3 py-1.5 text-xs text-foreground">
-          <option value="all">All Series</option>
-          {seriesList.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <button onClick={() => setShowPast(!showPast)}
-          className={cn("rounded-md px-3 py-1.5 text-xs font-semibold transition-all",
-            showPast ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-          )}>
-          {showPast ? "Show All" : "Show Past"}
-        </button>
-      </div>
-
-      {/* Event Grid */}
-      <div className="space-y-2">
-        {displayEvents.map((e: any) => {
-          const eventDate = new Date(e.date);
-          const isNext = e.id === nextEvent?.id;
-          const colorClass = SERIES_COLORS[e.series] || "bg-muted text-muted-foreground border-border/30";
-          return (
-            <div key={e.id} className={cn(
-              "flex items-center gap-4 rounded-lg border bg-card p-4 transition-all hover:border-primary/20",
-              isNext ? "border-primary/30" : "border-border/50",
-              isPast(eventDate) && "opacity-50"
-            )}>
-              {/* Date Block */}
-              <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-secondary">
-                <span className="text-[10px] font-semibold uppercase text-muted-foreground">{format(eventDate, "MMM")}</span>
-                <span className="text-lg font-bold text-foreground">{format(eventDate, "d")}</span>
-              </div>
-              {/* Info */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-foreground">{e.title}</p>
-                  {e.is_featured && <Star className="h-3 w-3 shrink-0 text-primary fill-primary" />}
-                </div>
-                <div className="mt-0.5 flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3" />{e.city}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{format(eventDate, "EEEE")}</span>
-                </div>
-              </div>
-              {/* Series Badge */}
-              <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold", colorClass)}>
-                {e.series?.replace(/-/g, " ")}
-              </span>
+      {viewMode === "calendar" ? (
+        <div className="flex gap-4">
+          {/* Calendar Grid */}
+          <div className="flex-1 rounded-lg border border-border/50 bg-card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="rounded-md p-1 hover:bg-muted"><ChevronLeft className="h-4 w-4" /></button>
+              <h2 className="text-sm font-bold text-foreground">{format(currentMonth, "MMMM yyyy")}</h2>
+              <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="rounded-md p-1 hover:bg-muted"><ChevronRight className="h-4 w-4" /></button>
             </div>
-          );
-        })}
-      </div>
+            <div className="grid grid-cols-7 gap-0.5">
+              {WEEKDAYS.map(d => (
+                <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">{d}</div>
+              ))}
+              {days.map((day, i) => {
+                if (!day) return <div key={`pad-${i}`} className="h-20" />;
+                const dayEvents = eventsOnDay(day);
+                const isSelected = selectedDay && isSameDay(day, selectedDay);
+                const today = isToday(day);
+                return (
+                  <button key={i} onClick={() => setSelectedDay(day)}
+                    className={cn("h-20 rounded-md border p-1 text-left transition-all overflow-hidden",
+                      isSelected ? "border-blue-400 bg-blue-50 ring-1 ring-blue-200" :
+                      today ? "border-blue-200 bg-blue-50/30" :
+                      dayEvents.length > 0 ? "border-border/50 bg-card hover:border-blue-200" : "border-border/20 hover:bg-muted/30")}>
+                    <span className={cn("text-[10px] font-bold", today ? "text-blue-600" : "text-foreground")}>{format(day, "d")}</span>
+                    <div className="mt-0.5 space-y-0.5">
+                      {dayEvents.slice(0, 2).map((e: any, j: number) => (
+                        <div key={j} className={cn("rounded px-1 py-0.5 text-[8px] font-semibold truncate border", getEventColor(e))}>
+                          {e.title}
+                        </div>
+                      ))}
+                      {dayEvents.length > 2 && <div className="text-[8px] text-muted-foreground">+{dayEvents.length - 2} more</div>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Day Detail */}
+          <div className="w-[300px] rounded-lg border border-border/50 bg-card p-4">
+            <h3 className="text-sm font-bold text-foreground mb-3">
+              {selectedDay ? format(selectedDay, "EEEE, MMMM d") : "Select a day"}
+            </h3>
+            {selectedDay && selectedEvents.length === 0 && (
+              <p className="text-xs text-muted-foreground/40 py-8 text-center">No events</p>
+            )}
+            <div className="space-y-2">
+              {selectedEvents.map((e: any) => (
+                <div key={e.id} className={cn("rounded-lg border p-3", getEventColor(e))}>
+                  <p className="text-xs font-bold">{e.title}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <MapPin className="h-3 w-3" /><span className="text-[10px]">{e.city}</span>
+                  </div>
+                  {e.series && <p className="text-[10px] mt-1 opacity-70">Series: {e.series}</p>}
+                  {e.description && <p className="text-[10px] mt-1 opacity-70 line-clamp-3">{e.description}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* LIST VIEW */
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{upcoming.length} upcoming events</p>
+          {upcoming.map((e: any) => (
+            <div key={e.id} className="flex items-center gap-3 rounded-lg border border-border/50 bg-card p-3">
+              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-muted">
+                <span className="text-[8px] font-bold uppercase text-muted-foreground">{format(parseISO(e.date), "MMM")}</span>
+                <span className="text-lg font-bold text-foreground leading-none">{format(parseISO(e.date), "d")}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">{e.title}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-muted-foreground">{e.city}</span>
+                  {e.series && <StatusBadge variant="default">{e.series}</StatusBadge>}
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground shrink-0">{format(parseISO(e.date), "EEEE")}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
