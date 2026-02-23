@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   Building2, Users, Target, Mail, Terminal,
   AlertTriangle, Radio, Calendar, ChevronRight,
-  Zap, Shield, Snowflake, Clock, CheckSquare, Send,, Search} from "lucide-react";
+  Zap, Shield, Snowflake, Clock, CheckSquare, Send, Search} from "lucide-react";
 import { format, subHours } from "date-fns";
 import { cn } from "@/lib/utils";
 
