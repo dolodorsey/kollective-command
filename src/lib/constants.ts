@@ -2,7 +2,7 @@ export const DIVISIONS = [
   { key: 'casper', name: 'CASPER GROUP', sub: 'Food & Beverage', color: '#D4603A', icon: '🍽',
     brands: ['Angel Wings','Pasta Bish','Taco Yaki','Patty Daddy','Espresso Co','Morning After',"Toss'd",'Sweet Tooth','Mojo Juice','Mr. Oyster'] },
   { key: 'huglife', name: 'HUGLIFE', sub: 'Events & Experiences', color: '#9C27B0', icon: '🎪',
-    brands: ['NOIR','Gangsta Gospel',"Sunday's Best",'REMIX','WRST BHVR : NAPKIN WARS','Paparazzi','Pawchella','Black Ball','Beauty & The Beast','Taste of Art','Haunted House',"Monster's Ball",'Snow Ball','Winter Wonderland'] },
+    brands: ['Espresso','Gangsta Gospel',"Sunday's Best",'Shut Up & Dance','Napkin King','Paparazzi','Pawchella','Black Ball','Beauty & The Beast','Taste of Art','Haunted House',"Monster's Ball",'Snow Ball','Winter Wonderland'] },
   { key: 'umbrella', name: 'UMBRELLA GROUP', sub: 'Services', color: '#1E88E5', icon: '☂',
     brands: ['Umbrella Auto Exchange','Umbrella Injury Network','Umbrella Realty Group','Umbrella Clean Services',"The People's Dept.",'Umbrella Accounting','The Brand Studio','The Automation Office','The Mind Studio','Umbrella Legal & Compliance'] },
   { key: 'bodegea', name: 'BODEGEA', sub: 'Products', color: '#43A047', icon: '📦',
