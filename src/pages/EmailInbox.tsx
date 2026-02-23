@@ -102,7 +102,7 @@ const EmailInbox = () => {
 
       <Tabs defaultValue="inbox" className="space-y-3">
         <TabsList>
-          <TabsTrigger value="inbox">Inbox ({threads.length})</TabsTrigger>
+          <TabsTrigger value="new" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-800">New</TabsTrigger>\n            <TabsTrigger value="inbox">Inbox ({threads.length})</TabsTrigger>
           <TabsTrigger value="live">Live ({liveEmails.length})</TabsTrigger>
           <TabsTrigger value="outbox">Outbox ({filteredComms.length})</TabsTrigger>
           <TabsTrigger value="scripts">Scripts ({scripts.length})</TabsTrigger>
