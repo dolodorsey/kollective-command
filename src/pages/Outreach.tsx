@@ -8,6 +8,75 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+
+const ScriptsPanel = () => {
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [filterBrand, setFilterBrand] = useState("all");
+
+  const { data: scripts = [] } = useQuery({
+    queryKey: ["outreach-scripts-panel", filterBrand],
+    queryFn: async () => {
+      let q = supabase.from("mcp_outreach_scripts").select("*").order("brand_key");
+      if (filterBrand !== "all") q = q.eq("brand_key", filterBrand);
+      const { data } = await q;
+      return data || [];
+    },
+  });
+
+  const saveScript = async (id: string) => {
+    await supabase.from("mcp_outreach_scripts").update({ body: editBody }).eq("id", id);
+    toast.success("Script saved");
+    setEditingId(null);
+    queryClient.invalidateQueries({ queryKey: ["outreach-scripts-panel"] });
+  };
+
+  const allBrands = [...new Set(scripts.map((s: any) => s.brand_key).filter(Boolean))];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Select value={filterBrand} onValueChange={setFilterBrand}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="All Brands" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Brands ({scripts.length})</SelectItem>
+            {allBrands.map((b: string) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Badge variant="outline">{scripts.length} scripts</Badge>
+      </div>
+      <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+        {scripts.map((s: any) => (
+          <div key={s.id} className="bg-white border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px]">{s.brand_key}</Badge>
+                <Badge variant="secondary" className="text-[10px]">{s.lead_type || s.script_type || 'outreach'}</Badge>
+                {s.channel && <Badge variant="secondary" className="text-[10px]">{s.channel}</Badge>}
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => { 
+                if (editingId === s.id) { setEditingId(null); } 
+                else { setEditingId(s.id); setEditBody(s.body || ''); }
+              }}>
+                {editingId === s.id ? 'Cancel' : 'Edit'}
+              </Button>
+            </div>
+            {editingId === s.id ? (
+              <div className="space-y-2">
+                <Textarea value={editBody} onChange={e => setEditBody(e.target.value)} rows={5} className="font-mono text-sm" />
+                <Button size="sm" onClick={() => saveScript(s.id)}>Save Script</Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{s.body}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Outreach = () => {
   const [selectedType, setSelectedType] = useState("pr");
   const [selectedBrand, setSelectedBrand] = useState("all");
