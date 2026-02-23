@@ -31,7 +31,7 @@ const Home = () => {
         supabase.from("failure_log").select("*", { count: "exact", head: true }).eq("resolved", false),
         supabase.from("webhook_health").select("*", { count: "exact", head: true }).eq("status", "healthy"),
         supabase.from("tasks").select("*", { count: "exact", head: true }).neq("status", "done"),
-        supabase.from("approval_queue").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("command_log").select("*", { count: "exact", head: true }).eq("command_type", "pending_approval").eq("status", "pending"),
       ]);
       return {
         tenants: tenants.count || 0, leads: leads.count || 0, contacts: contacts.count || 0,
@@ -86,7 +86,7 @@ const Home = () => {
   const { data: pendingApprovalsList = [] } = useQuery({
     queryKey: ["pending-approvals-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("approval_queue").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(10);
+      const { data } = await supabase.from("command_log").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(10);
       return data || [];
     },
   });
