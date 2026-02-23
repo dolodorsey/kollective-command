@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   Building2, Users, Target, Mail, Terminal,
   AlertTriangle, Radio, Calendar, ChevronRight,
-  Zap, Shield, Snowflake, Clock, CheckSquare, Send,
-} from "lucide-react";
+  Zap, Shield, Snowflake, Clock, CheckSquare, Send,, Search} from "lucide-react";
 import { format, subHours } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +104,33 @@ const Home = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "command_log" }, () => { queryClient.invalidateQueries({ queryKey: ["signal-feed"] }); queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }); })
       .on("postgres_changes", { event: "*", schema: "public", table: "failure_log" }, () => { queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }); queryClient.invalidateQueries({ queryKey: ["unresolved-failures"] }); })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    
+  const { data: pendingCount } = useQuery({
+    queryKey: ["pending-count"],
+    queryFn: async () => {
+      const { count } = await supabase.from("approval_queue").select("*", { count: "exact", head: true }).eq("status", "pending");
+      return count || 0;
+    },
+    refetchInterval: 15000,
+  });
+
+  const { data: leadCount } = useQuery({
+    queryKey: ["lead-count"],
+    queryFn: async () => {
+      const { count } = await supabase.from("mcp_leads").select("*", { count: "exact", head: true });
+      return count || 0;
+    },
+  });
+
+  const { data: eventCount } = useQuery({
+    queryKey: ["event-count"],
+    queryFn: async () => {
+      const { count } = await supabase.from("events").select("*", { count: "exact", head: true });
+      return count || 0;
+    },
+  });
+
+  return () => { supabase.removeChannel(ch); };
   }, [queryClient]);
 
   const totalBrands = DIVISIONS.reduce((s, d) => s + d.brands.length, 0);
@@ -119,12 +144,15 @@ const Home = () => {
     <div className="space-y-5 animate-fade-in">
       <h1 className="text-2xl font-bold text-foreground">Command Center</h1>
 
-      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
         <StatCard label="Commands" value={(stats && stats.commands) || "—"} icon={Terminal} onClick={() => navigate("/commands")} />
         <StatCard label="Contacts" value={stats && stats.contacts ? stats.contacts.toLocaleString() : "—"} icon={Users} onClick={() => navigate("/leads")} />
         <StatCard label="Total Brands" value={totalBrands} icon={Building2} onClick={() => { const el = document.getElementById("div-section"); if (el) el.scrollIntoView({ behavior: "smooth" }); }} />
         <StatCard label="Open Tasks" value={(stats && stats.tasks) || "—"} icon={CheckSquare} onClick={() => navigate("/tasks")} />
         <StatCard label="Healthy Hooks" value={`${(stats && stats.webhooks) || "—"}/26`} icon={Radio} onClick={() => navigate("/system")} />
+            <StatCard label="Leads" value={leadCount ? leadCount.toLocaleString() : "—"} icon={Search} onClick={() => navigate("/leads")} />
+            <StatCard label="Events" value={eventCount || "—"} icon={Calendar} onClick={() => navigate("/events")} />
+            <StatCard label="Pending" value={pendingCount || "—"} icon={Shield} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
       </div>
 
       {/* Needs Attention */}
