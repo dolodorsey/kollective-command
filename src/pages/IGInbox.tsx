@@ -1,241 +1,201 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Instagram, Send, Users, MessageSquare, Eye } from "lucide-react";
+import { Instagram, RefreshCw, Loader2, Send, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const IG_ACCOUNTS = ["dolodorsey", "letstalkaboutitatlanta", "hauseofstush", "thebodegaworldwide", "drdolodorsey", "thepinkypromiseatl"];
+
 const IGInbox = () => {
-  const [acctFilter, setAcctFilter] = useState("all");
+  const queryClient = useQueryClient();
+  const [accountFilter, setAccountFilter] = useState("all");
+  const [liveDMs, setLiveDMs] = useState<any[]>([]);
+  const [fetchingLive, setFetchingLive] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<any>(null);
 
-  const { data: accounts = [] } = useQuery({
-    queryKey: ["ig-accounts"],
-    queryFn: async () => {
-      const { data } = await supabase.from("platform_accounts")
-        .select("id, email, username, platform, metadata")
-        .eq("platform", "instagram").order("username");
-      return data || [];
-    },
-  });
-
-  const { data: threads = [] } = useQuery({
-    queryKey: ["ig-threads"],
-    queryFn: async () => {
-      const { data } = await supabase.from("threads")
-        .select("*, platform_accounts(email, username, platform)")
-        .order("last_message_at", { ascending: false }).limit(60);
-      return (data || []).filter((t: any) => {
-        const pa = t.platform_accounts?.platform;
-        const mc = (t.metadata || ({} as any)).channel;
-        return pa === "instagram" || mc === "instagram" || mc === "ig";
-      });
-    },
-    refetchInterval: 30000,
-  });
-
   const { data: targets = [] } = useQuery({
-    queryKey: ["ig-targets", acctFilter],
+    queryKey: ["ig-targets"],
     queryFn: async () => {
-      const { data } = await supabase.from("social_outreach_targets")
-        .select("*").eq("platform", "instagram")
-        .order("created_at", { ascending: false }).limit(100);
+      const { data } = await supabase.from("social_outreach_targets").select("*").order("created_at", { ascending: false }).limit(200);
       return data || [];
     },
   });
 
-  const { data: dmScripts = [] } = useQuery({
-    queryKey: ["dm-scripts"],
+  const { data: scripts = [] } = useQuery({
+    queryKey: ["ig-dm-scripts"],
     queryFn: async () => {
-      const { data } = await supabase.from("mcp_outreach_scripts")
-        .select("*").eq("channel", "dm").order("brand_key").limit(60);
+      const { data } = await supabase.from("mcp_outreach_scripts").select("*").eq("channel", "dm").order("brand_key");
       return data || [];
     },
   });
 
-  const { data: touchpoints = [] } = useQuery({
+  const { data: touches = [] } = useQuery({
     queryKey: ["ig-touches"],
     queryFn: async () => {
-      const { data } = await supabase.from("mcp_touchpoints")
-        .select("*").in("channel", ["dm", "comment", "ig"])
-        .order("created_at", { ascending: false }).limit(50);
+      const { data } = await supabase.from("mcp_touchpoints").select("*").in("channel", ["dm", "comment", "ig"]).order("created_at", { ascending: false }).limit(50);
       return data || [];
     },
   });
 
-  const statusCounts = {
-    ready: targets.filter((t: any) => t.status === "ready").length,
-    sent: targets.filter((t: any) => t.status === "sent").length,
-    replied: targets.filter((t: any) => t.status === "replied").length,
-    total: targets.length,
+  const fetchLiveDMs = async () => {
+    setFetchingLive(true);
+    try {
+      const res = await fetch("https://drdorsey.app.n8n.cloud/webhook/exec-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_type: "ig_fetch_dms", account: accountFilter === "all" ? "dolodorsey" : accountFilter, limit: 20, source: "mcp-ig-inbox" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const dms = data.messages || data.dms || data.results || (Array.isArray(data) ? data : []);
+        setLiveDMs(dms);
+        toast.success("Fetched " + dms.length + " DMs");
+      } else { toast.error("DM fetch failed"); }
+    } catch { toast.error("Could not reach IG workflow"); }
+    setFetchingLive(false);
   };
+
+  const readyCount = targets.filter((t: any) => t.status === "ready").length;
+  const sentCount = targets.filter((t: any) => t.status === "sent").length;
+  const repliedCount = targets.filter((t: any) => t.status === "replied").length;
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Instagram DMs</h1>
-        <span className="rounded-md bg-status-pink/10 px-2.5 py-1 text-xs font-bold text-status-pink">
-          {accounts.length} accounts · {targets.length} targets
-        </span>
+        <h1 className="text-2xl font-bold text-foreground">Instagram</h1>
+        <Button size="sm" className="gap-1.5" onClick={fetchLiveDMs} disabled={fetchingLive}>
+          {fetchingLive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {fetchingLive ? "Fetching..." : "Pull Live DMs"}
+        </Button>
       </div>
 
-      {/* Account filters */}
-      <div className="flex gap-1 overflow-x-auto">
-        <button onClick={() => setAcctFilter("all")}
-          className={cn("shrink-0 rounded-md px-3 py-1 text-[10px] font-semibold transition-all",
-            acctFilter === "all" ? "bg-status-pink/10 text-status-pink border border-status-pink/20" : "text-muted-foreground hover:bg-muted")}>
-          ALL
-        </button>
-        {accounts.map((a: any) => (
-          <button key={a.id} onClick={() => setAcctFilter(a.id)}
-            className={cn("shrink-0 rounded-md px-3 py-1 text-[10px] font-semibold transition-all whitespace-nowrap",
-              acctFilter === a.id ? "bg-status-pink/10 text-status-pink border border-status-pink/20" : "text-muted-foreground hover:bg-muted")}>
-            @{a.username || (a.email || "").split("@")[0]}
-          </button>
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        <button onClick={() => setAccountFilter("all")} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold", accountFilter === "all" ? "bg-pink-100 text-pink-700" : "text-muted-foreground hover:bg-muted")}>ALL</button>
+        {IG_ACCOUNTS.map(a => (
+          <button key={a} onClick={() => setAccountFilter(a)} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold", accountFilter === a ? "bg-pink-100 text-pink-700" : "text-muted-foreground hover:bg-muted")}>@{a}</button>
         ))}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: "Ready to Send", value: statusCounts.ready, color: "text-status-warning" },
-          { label: "Sent", value: statusCounts.sent, color: "text-status-info" },
-          { label: "Replied", value: statusCounts.replied, color: "text-status-success" },
-          { label: "DM Touches", value: touchpoints.length, color: "text-status-pink" },
-        ].map((s, i) => (
-          <div key={i} className="rounded-lg border border-border/50 bg-card p-2.5 text-center">
+      <div className="grid grid-cols-3 gap-2">
+        {[{ label: "Ready", value: readyCount, color: "text-amber-600" }, { label: "Sent", value: sentCount, color: "text-blue-600" }, { label: "Replied", value: repliedCount, color: "text-green-600" }].map((s, i) => (
+          <div key={i} className="rounded-lg border border-border/50 bg-card p-2 text-center">
             <div className={cn("font-mono text-lg font-bold", s.color)}>{s.value}</div>
             <div className="text-[9px] text-muted-foreground">{s.label}</div>
           </div>
         ))}
       </div>
 
-      <Tabs defaultValue="inbox" className="space-y-3">
+      <Tabs defaultValue="dms" className="space-y-3">
         <TabsList>
-          <TabsTrigger value="inbox">DM Inbox ({threads.length})</TabsTrigger>
+          <TabsTrigger value="dms">DM Inbox ({liveDMs.length})</TabsTrigger>
           <TabsTrigger value="targets">Targets ({targets.length})</TabsTrigger>
-          <TabsTrigger value="scripts">Scripts ({dmScripts.length})</TabsTrigger>
-          <TabsTrigger value="touches">Touch Log ({touchpoints.length})</TabsTrigger>
+          <TabsTrigger value="scripts">DM Scripts ({scripts.length})</TabsTrigger>
+          <TabsTrigger value="touches">Touch Log ({touches.length})</TabsTrigger>
         </TabsList>
 
-        {/* DM Inbox */}
-        <TabsContent value="inbox">
-          {threads.length === 0 ? (
-            <div className="rounded-lg border border-border/50 bg-card p-16 text-center">
-              <Instagram className="mx-auto h-10 w-10 text-status-pink/20" />
-              <p className="mt-4 text-sm text-muted-foreground/50">No IG DM threads yet</p>
-              <p className="mt-1 text-[10px] text-muted-foreground/30">Connect IG OAuth in n8n to start polling DMs</p>
+        <TabsContent value="dms">
+          {liveDMs.length === 0 ? (
+            <div className="rounded-lg border border-border/50 bg-card p-12 text-center">
+              <Instagram className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
+              <p className="text-sm text-muted-foreground">Click "Pull Live DMs" to fetch from Instagram</p>
+              <p className="text-[10px] text-muted-foreground/40 mt-1">Uses n8n Social Inbox workflow</p>
             </div>
           ) : (
-            <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-              {threads.map((t: any) => (
-                <div key={t.id} className="border-b border-border/20 px-4 py-3 hover:bg-secondary/50 last:border-0">
-                  <div className="text-xs font-semibold text-foreground">{t.subject}</div>
-                  <div className="flex gap-1.5 mt-1">
-                    <StatusBadge variant="default">{(t.metadata || ({} as any)).brand_key || "—"}</StatusBadge>
+            <div className="space-y-1.5">
+              {liveDMs.map((dm: any, i: number) => (
+                <div key={i} className="rounded-lg border border-border/50 bg-card p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-pink-600">@{dm.from || dm.username || dm.sender || "unknown"}</span>
+                    <span className="text-[9px] text-muted-foreground">{dm.timestamp || dm.date || ""}</span>
                   </div>
+                  <p className="text-xs text-foreground mt-1">{dm.text || dm.message || dm.content || ""}</p>
                 </div>
               ))}
             </div>
           )}
         </TabsContent>
 
-        {/* Targets */}
         <TabsContent value="targets">
           <div className="flex gap-4">
-            <div className={cn("rounded-lg border border-border/50 bg-card overflow-hidden", selectedTarget ? "flex-1" : "w-full")}>
-              <table className="w-full text-sm">
-                <thead><tr className="bg-background">
-                  {["Handle", "Brand", "City", "Tags", "Status"].map(h => (
-                    <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {targets.slice(0, 50).map((t: any) => (
-                    <tr key={t.id} onClick={() => setSelectedTarget(t)}
-                      className={cn("border-b border-border/20 hover:bg-secondary/50 cursor-pointer transition-colors",
-                        selectedTarget?.id === t.id && "bg-primary/5")}>
-                      <td className="px-3 py-2 font-semibold text-status-pink">{t.handle}</td>
-                      <td className="px-3 py-2"><StatusBadge variant="default">{t.brand_key}</StatusBadge></td>
-                      <td className="px-3 py-2 text-muted-foreground">{t.city || "—"}</td>
-                      <td className="px-3 py-2">{(t.tags || []).slice(0, 2).map((tag: string, j: number) => <StatusBadge key={j} variant="default">{tag}</StatusBadge>)}</td>
-                      <td className="px-3 py-2"><StatusBadge variant={t.status === "ready" ? "warning" : t.status === "sent" ? "info" : t.status === "replied" ? "success" : "default"}>{t.status || "—"}</StatusBadge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className={cn("overflow-auto", selectedTarget ? "w-1/2" : "w-full")}>
+              <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead><tr className="bg-muted/30">
+                    {["Handle", "Brand", "City", "Status"].map(h => (
+                      <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {targets.slice(0, 60).map((t: any) => (
+                      <tr key={t.id} className={cn("border-b border-border/20 hover:bg-muted/20 cursor-pointer", selectedTarget?.id === t.id ? "bg-pink-50" : "")} onClick={() => setSelectedTarget(t)}>
+                        <td className="px-3 py-2 font-semibold text-pink-600 text-xs">{t.handle}</td>
+                        <td className="px-3 py-2"><StatusBadge variant="default">{t.brand_key}</StatusBadge></td>
+                        <td className="px-3 py-2 text-[10px] text-muted-foreground">{t.city || "\u2014"}</td>
+                        <td className="px-3 py-2"><StatusBadge variant={t.status === "ready" ? "warning" : t.status === "replied" ? "success" : "info"}>{t.status}</StatusBadge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
             {selectedTarget && (
-              <div className="w-[320px] rounded-lg border border-border/50 bg-card p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-status-pink font-bold">@{selectedTarget.handle}</span>
-                  <button onClick={() => setSelectedTarget(null)} className="text-muted-foreground hover:text-foreground text-xs">×</button>
+              <div className="flex-1 rounded-lg border border-pink-200 bg-card p-4">
+                <h3 className="text-sm font-bold text-pink-600 mb-3">{selectedTarget.handle}</h3>
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-muted-foreground text-xs">Brand:</span> <span className="text-foreground">{selectedTarget.brand_key}</span></div>
+                  <div><span className="text-muted-foreground text-xs">City:</span> <span className="text-foreground">{selectedTarget.city || "\u2014"}</span></div>
+                  <div><span className="text-muted-foreground text-xs">Platform:</span> <span className="text-foreground">{selectedTarget.platform || "instagram"}</span></div>
+                  <div><span className="text-muted-foreground text-xs">Status:</span> <StatusBadge variant={selectedTarget.status === "ready" ? "warning" : "success"}>{selectedTarget.status}</StatusBadge></div>
+                  {selectedTarget.followers && <div><span className="text-muted-foreground text-xs">Followers:</span> <span className="text-foreground font-mono">{selectedTarget.followers}</span></div>}
+                  {selectedTarget.engagement_rate && <div><span className="text-muted-foreground text-xs">Engagement:</span> <span className="text-foreground font-mono">{selectedTarget.engagement_rate}%</span></div>}
+                  {selectedTarget.tags && (
+                    <div className="flex flex-wrap gap-1">{(selectedTarget.tags || []).map((t: string, j: number) => <StatusBadge key={j} variant="default">{t}</StatusBadge>)}</div>
+                  )}
                 </div>
-                <div className="space-y-1 text-xs">
-                  <div><span className="text-muted-foreground">Brand:</span> <span className="text-foreground">{selectedTarget.brand_key}</span></div>
-                  <div><span className="text-muted-foreground">City:</span> <span className="text-foreground">{selectedTarget.city || "—"}</span></div>
-                  <div><span className="text-muted-foreground">Followers:</span> <span className="text-foreground">{selectedTarget.followers || "—"}</span></div>
-                  <div><span className="text-muted-foreground">Engagement:</span> <span className="text-foreground">{selectedTarget.engagement_rate || "—"}</span></div>
-                  <div><span className="text-muted-foreground">Status:</span> <StatusBadge variant={selectedTarget.status === "ready" ? "warning" : "default"}>{selectedTarget.status}</StatusBadge></div>
-                  <div><span className="text-muted-foreground">Tags:</span> {(selectedTarget.tags || []).map((t: string, i: number) => <StatusBadge key={i} variant="default">{t}</StatusBadge>)}</div>
-                </div>
+                <button onClick={() => setSelectedTarget(null)} className="mt-3 text-[10px] text-blue-500 hover:underline">Close</button>
               </div>
             )}
           </div>
         </TabsContent>
 
-        {/* Scripts */}
         <TabsContent value="scripts">
           <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
             <table className="w-full text-sm">
-              <thead><tr className="bg-background">
-                {["Brand", "Hook", "DM Body", "CTA"].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
+              <thead><tr className="bg-muted/30">
+                {["Brand", "Hook", "Body", "CTA"].map(h => (
+                  <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
                 ))}
               </tr></thead>
               <tbody>
-                {dmScripts.map((s: any, i: number) => (
-                  <tr key={i} className="border-b border-border/20 hover:bg-secondary/50">
+                {scripts.map((s: any, i: number) => (
+                  <tr key={i} className="border-b border-border/20 hover:bg-muted/20">
                     <td className="px-3 py-2"><StatusBadge variant="default">{s.brand_key}</StatusBadge></td>
-                    <td className="px-3 py-2 text-xs font-semibold text-foreground">{s.hook || "—"}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground max-w-[350px]"><div className="line-clamp-2">{s.body}</div></td>
-                    <td className="px-3 py-2 text-xs text-primary">{s.cta || "—"}</td>
+                    <td className="px-3 py-2 text-xs font-semibold text-foreground">{s.hook || "\u2014"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground max-w-[300px]"><div className="line-clamp-2">{s.body}</div></td>
+                    <td className="px-3 py-2 text-xs text-blue-600">{s.cta || "\u2014"}</td>
                   </tr>
                 ))}
-                {dmScripts.length === 0 && (
-                  <tr><td colSpan={4} className="px-3 py-8 text-center text-xs text-muted-foreground/40">No DM scripts loaded</td></tr>
-                )}
               </tbody>
             </table>
           </div>
         </TabsContent>
 
-        {/* Touch Log */}
         <TabsContent value="touches">
-          <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-background">
-                {["Brand", "Channel", "Outcome", "Preview", "Time"].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {touchpoints.map((t: any, i: number) => (
-                  <tr key={i} className="border-b border-border/20 hover:bg-secondary/50">
-                    <td className="px-3 py-2"><StatusBadge variant="default">{t.brand_key}</StatusBadge></td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{t.channel}</td>
-                    <td className="px-3 py-2"><StatusBadge variant={t.outcome === "replied" ? "success" : t.outcome === "sent" ? "info" : t.outcome === "dnc" ? "error" : "default"}>{t.outcome || "—"}</StatusBadge></td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground max-w-[250px] truncate">{t.message_preview || "—"}</td>
-                    <td className="px-3 py-2 text-[10px] text-muted-foreground/40">{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
-                  </tr>
-                ))}
-                {touchpoints.length === 0 && (
-                  <tr><td colSpan={5} className="px-3 py-8 text-center text-xs text-muted-foreground/40">No DM touches recorded yet</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="space-y-1.5">
+            {touches.map((t: any, i: number) => (
+              <div key={i} className="flex items-center gap-3 rounded-md border border-border/30 p-2.5">
+                <Send className="h-3 w-3 text-muted-foreground shrink-0" />
+                <StatusBadge variant="default">{t.brand_key}</StatusBadge>
+                <span className="text-xs text-muted-foreground">{t.channel}</span>
+                <StatusBadge variant={t.outcome === "replied" ? "success" : t.outcome === "sent" ? "info" : "default"}>{t.outcome || "\u2014"}</StatusBadge>
+                <span className="text-[10px] text-muted-foreground truncate flex-1">{t.message_preview || "\u2014"}</span>
+              </div>
+            ))}
+            {touches.length === 0 && <p className="py-8 text-center text-xs text-muted-foreground/40">No IG touches</p>}
           </div>
         </TabsContent>
       </Tabs>
