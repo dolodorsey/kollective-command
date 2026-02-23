@@ -9,6 +9,84 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DIVISIONS } from "@/lib/constants";
 
+
+const SheetsSyncTab = () => {
+  const { data: syncStatus } = useQuery({
+    queryKey: ["sheets-sync-status"],
+    queryFn: async () => {
+      const { data } = await supabase.from("mcp_core_config").select("config_value").eq("config_key", "sheets_sync_status").single();
+      if (!data) return {};
+      const val = data.config_value;
+      return typeof val === "string" ? JSON.parse(val) : val;
+    },
+  });
+
+  const { data: syncMap } = useQuery({
+    queryKey: ["sheets-sync-map"],
+    queryFn: async () => {
+      const { data } = await supabase.from("mcp_core_config").select("config_value").eq("config_key", "sheets_sync_map_v2").single();
+      if (!data) return null;
+      const val = data.config_value;
+      return typeof val === "string" ? JSON.parse(val) : val;
+    },
+  });
+
+  const [triggeringSync, setTriggeringSync] = useState(false);
+
+  const triggerSync = async () => {
+    setTriggeringSync(true);
+    try {
+      await fetch("https://drdorsey.app.n8n.cloud/webhook/sheets-sync-bridge", { method: "GET" });
+      toast.success("Sync triggered");
+    } catch { toast.error("Could not trigger sync"); }
+    setTriggeringSync(false);
+  };
+
+  const sheets = syncStatus ? Object.entries(syncStatus) : [];
+  const mapSheets = syncMap?.sheets || [];
+  const totalTabs = syncMap?.total_tabs || 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-foreground">{mapSheets.length} Spreadsheets \u00b7 {totalTabs} Tabs Mapped</p>
+          <p className="text-[10px] text-muted-foreground">Google Sheets \u2192 Supabase sync pipeline</p>
+        </div>
+        <Button size="sm" onClick={triggerSync} disabled={triggeringSync}>
+          {triggeringSync ? "Syncing..." : "Trigger Full Sync"}
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {mapSheets.map((sheet: any, i: number) => {
+          const status = syncStatus?.[sheet.name?.toLowerCase().replace(/\s+/g, "_")] || {};
+          const tabCount = sheet.tabs?.length || 0;
+          const targetTables = [...new Set((sheet.tabs || []).map((t: any) => t.table))];
+          return (
+            <div key={i} className="rounded-lg border border-border/50 bg-card p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <a href={"https://docs.google.com/spreadsheets/d/" + sheet.sheet_id} target="_blank" rel="noopener noreferrer"
+                    className="text-sm font-bold text-blue-600 hover:underline">{sheet.name}</a>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{tabCount} tabs \u2192 {targetTables.join(", ")}</p>
+                </div>
+                <StatusBadge variant={status.status === "synced" ? "success" : status.status === "error" ? "error" : "warning"}>{status.status || "pending"}</StatusBadge>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {(sheet.tabs || []).slice(0, 8).map((tab: any, j: number) => (
+                  <span key={j} className="inline-block rounded-md bg-muted/50 px-2 py-0.5 text-[9px] font-mono text-muted-foreground">{tab.tab} \u2192 {tab.table}</span>
+                ))}
+                {tabCount > 8 && <span className="text-[9px] text-muted-foreground">+{tabCount - 8} more</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Settings = () => {
   const queryClient = useQueryClient();
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
@@ -266,6 +344,9 @@ const Settings = () => {
               </tbody>
             </table>
           </div>
+        </TabsContent>
+        <TabsContent value="sheets">
+          <SheetsSyncTab />
         </TabsContent>
       </Tabs>
     </div>
