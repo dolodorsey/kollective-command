@@ -50,7 +50,7 @@ const SystemHealth = () => {
     },
   });
 
-  const healthyWebhooks = webhookHealth.filter((w: any) => w.status === 'healthy' || w.status === 'ok').length;
+  const healthyWebhooks = webhookHealth.filter((w: any) => w.status === 'healthy').length;
   const totalWebhooks = webhookHealth.length;
   const overallHealth = totalWebhooks > 0 ? Math.round((healthyWebhooks / totalWebhooks) * 100) : 0;
 
@@ -114,10 +114,10 @@ const SystemHealth = () => {
               {webhookHealth.map((w: any) => (
                 <div key={w.id} className="flex items-center justify-between p-2 bg-white border rounded-lg text-xs">
                   <div className="flex items-center gap-2">
-                    <span className={cn("w-2 h-2 rounded-full", w.status === 'healthy' || w.status === 'ok' ? 'bg-green-500' : 'bg-red-500')} />
-                    <span className="font-medium">{w.webhook_name || w.endpoint}</span>
+                    <span className={cn("w-2 h-2 rounded-full", w.status === 'healthy' ? 'bg-green-500' : 'bg-red-500')} />
+                    <span className="font-medium">{w.workflow_name || w.endpoint_path}</span>
                   </div>
-                  <span className="text-muted-foreground">{w.last_triggered_at ? format(new Date(w.last_triggered_at), 'MMM d, h:mm a') : '—'}</span>
+                  <span className="text-muted-foreground">{w.last_checked_at ? format(new Date(w.last_checked_at), 'MMM d, h:mm a') : '—'}</span>
                 </div>
               ))}
             </div>
