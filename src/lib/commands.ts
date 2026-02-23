@@ -3,6 +3,12 @@ import { toast } from 'sonner';
 
 const N8N_BASE = "https://drdorsey.app.n8n.cloud";
 
+const COMMAND_ROUTES: Record<string, string> = {
+  "brand.scrape_leads": "/webhook/scrape-leads",
+  "scrape.&.enrich.leads": "/webhook/scrape-leads",
+  "scrape_leads": "/webhook/scrape-leads",
+};
+
 export interface Command {
   command_type: string;
   scope?: string;
@@ -17,7 +23,8 @@ export async function sendCommand(
   target_key?: string
 ) {
   try {
-    const res = await fetch(`${N8N_BASE}/webhook/execute-command`, {
+    const webhook = COMMAND_ROUTES[command_type] || "/webhook/execute-command";
+    const res = await fetch(`${N8N_BASE}${webhook}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command_type, scope: scope || 'global', target_key, payload }),
