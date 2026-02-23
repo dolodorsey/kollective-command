@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { sendCommand } from "@/lib/commands";
 import { DIVISIONS, COMMAND_LABELS } from "@/lib/constants";
 import { StatCard } from "@/components/StatCard";
+import { ApprovalQueue } from "@/components/ApprovalQueue";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
@@ -199,7 +200,9 @@ const Home = () => {
                 <span className="text-[10px] text-muted-foreground">— {div.sub}</span>
                 <span className="text-[10px] font-mono text-muted-foreground/40 ml-auto">{div.brands.length}</span>
               </button>
-              <div className="flex flex-wrap gap-1.5">
+              <ApprovalQueue />
+
+      <div className="flex flex-wrap gap-1.5">
                 {div.brands.map(b => {
                   const slug = b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
                   return (
