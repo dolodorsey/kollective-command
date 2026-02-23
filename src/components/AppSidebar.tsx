@@ -26,7 +26,7 @@ const COMMS_NAV = [
 const OPS_NAV = [
   { title: "EVENTS", url: "/events", icon: Calendar },
   { title: "OUTREACH", url: "/outreach", icon: Send },
-  { title: "LEADS", url: "/leads", icon: Target },
+  { title: "LEAD ENGINE", url: "/leads", icon: Target },
   { title: "SOCIAL", url: "/social", icon: Share2 },
   { title: "TASKS", url: "/tasks", icon: CheckSquare },
   { title: "OUTPUTS", url: "/outputs", icon: FileOutput },
