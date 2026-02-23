@@ -1,16 +1,24 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { Send, Users, Target, Mail, Plus, ChevronRight, ExternalLink } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DIVISIONS } from "@/lib/constants";
+import { Send } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+const OUTREACH_TYPES = ["pr", "sponsor", "grant", "customer", "influencer"];
+
 const Outreach = () => {
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [selectedPitch, setSelectedPitch] = useState<any>(null);
+
   const { data: pitches = [] } = useQuery({
     queryKey: ["pr-pitches"],
     queryFn: async () => {
-      const { data } = await supabase.from("pr_pitches").select("*").order("created_at", { ascending: false }).limit(20);
+      const { data } = await supabase.from("pr_pitches").select("*").order("created_at", { ascending: false });
       return data || [];
     },
   });
@@ -18,152 +26,113 @@ const Outreach = () => {
   const { data: contacts = [] } = useQuery({
     queryKey: ["pr-contacts"],
     queryFn: async () => {
-      const { data } = await supabase.from("pr_contacts").select("*").order("score", { ascending: false }).limit(50);
+      const { data } = await supabase.from("pr_contacts").select("*").order("score", { ascending: false }).limit(100);
       return data || [];
     },
   });
 
   const { data: activity = [] } = useQuery({
-    queryKey: ["pr-activity"],
+    queryKey: ["outreach-activity"],
     queryFn: async () => {
-      const { data } = await supabase.from("pr_outreach_activity").select("*, pr_contacts(reporter_name, outlet_name), pr_pitches(pitch_title)").order("created_at", { ascending: false }).limit(30);
+      const { data } = await supabase.from("pr_outreach_activity").select("*").order("created_at", { ascending: false }).limit(50);
       return data || [];
     },
   });
 
-  const { data: stats } = useQuery({
-    queryKey: ["pr-stats"],
-    queryFn: async () => {
-      const [totalContacts, activePitches, totalTouches] = await Promise.all([
-        supabase.from("pr_contacts").select("*", { count: "exact", head: true }),
-        supabase.from("pr_pitches").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("pr_outreach_activity").select("*", { count: "exact", head: true }),
-      ]);
-      return {
-        contacts: totalContacts.count ?? 0,
-        activePitches: activePitches.count ?? 0,
-        touches: totalTouches.count ?? 0,
-      };
-    },
-  });
-
-  const statusVariant = (s: string): "success" | "warning" | "error" | "info" | "default" => {
-    const map: Record<string, "success" | "warning" | "error" | "info" | "default"> = {
-      Active: "success", active: "success", sent: "info", replied: "success",
-      follow_up_1: "warning", follow_up_2: "warning", pitched: "info",
-      bounced: "error", declined: "error", interested: "success",
-    };
-    return map[s] || "default";
-  };
+  const filteredContacts = brandFilter === "all" ? contacts : contacts.filter((c: any) =>
+    (c.brand_key || "").includes(brandFilter) || (c.tags || []).some((t: string) => t.includes(brandFilter))
+  );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">PR Outreach</h1>
-        <Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />New Pitch</Button>
+        <h1 className="text-2xl font-bold text-foreground">Outreach</h1>
+        <span className="text-xs text-muted-foreground">{pitches.length} pitches \u00b7 {contacts.length} contacts \u00b7 {activity.length} activities</span>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Media Contacts", value: stats?.contacts ?? "—", icon: Users },
-          { label: "Active Pitches", value: stats?.activePitches ?? "—", icon: Target },
-          { label: "Total Touches", value: stats?.touches ?? "—", icon: Mail },
-        ].map((s, i) => (
-          <div key={i} className="rounded-lg border border-border/50 bg-card p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{s.label}</span>
-              <s.icon className="h-4 w-4 text-primary/60" />
-            </div>
-            <div className="mt-2 font-mono text-2xl font-bold text-foreground">{s.value}</div>
-          </div>
+      <div className="flex gap-1 flex-wrap">
+        <button onClick={() => setTypeFilter("all")} className={cn("rounded-md px-3 py-1 text-[10px] font-semibold", typeFilter === "all" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}>ALL</button>
+        {OUTREACH_TYPES.map(t => (
+          <button key={t} onClick={() => setTypeFilter(t)} className={cn("rounded-md px-3 py-1 text-[10px] font-semibold uppercase", typeFilter === t ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}>{t}</button>
         ))}
       </div>
 
-      {/* Active Pitches */}
-      <div className="rounded-lg border border-border/50 bg-card p-5">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Pitches</h2>
-        <div className="space-y-3">
-          {pitches.length === 0 && <p className="text-sm text-muted-foreground/40">No pitches yet</p>}
-          {pitches.map((p: any) => (
-            <div key={p.id} className="rounded-md border border-border/30 bg-secondary/30 p-4 transition-colors hover:border-primary/20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{p.pitch_title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{p.pitch_angle?.substring(0, 120)}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge variant={statusVariant(p.status)}>{p.status}</StatusBadge>
-                  <StatusBadge variant={p.priority === "high" ? "error" : "default"}>{p.priority}</StatusBadge>
-                </div>
-              </div>
-              {p.target_outlets && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {(p.target_outlets || []).map((outlet: string, i: number) => (
-                    <span key={i} className="rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{outlet}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        <button onClick={() => setBrandFilter("all")} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold", brandFilter === "all" ? "bg-blue-100 text-blue-700" : "text-muted-foreground hover:bg-muted")}>ALL BRANDS</button>
+        {DIVISIONS.map(d => (
+          <button key={d.key} onClick={() => setBrandFilter(d.key)} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap", brandFilter === d.key ? "bg-blue-100 text-blue-700" : "text-muted-foreground hover:bg-muted")}>{d.name}</button>
+        ))}
       </div>
 
-      {/* Contact List */}
-      <div className="rounded-lg border border-border/50 bg-card">
-        <div className="flex items-center justify-between border-b border-border/30 px-5 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Media Contacts</h2>
-          <span className="text-[10px] text-muted-foreground">{contacts.length} contacts</span>
-        </div>
-        <div className="max-h-96 overflow-auto">
-          {contacts.map((c: any) => (
-            <div key={c.contact_id} className="flex items-center gap-3 border-b border-border/20 px-5 py-3 last:border-0 transition-colors hover:bg-secondary/30">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                {(c.reporter_name || "?")[0]}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{c.reporter_name}</p>
-                <p className="truncate text-xs text-muted-foreground">{c.outlet_name} · {c.beat} · {c.city}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {c.score && (
-                  <span className={cn("rounded px-1.5 py-0.5 font-mono text-[10px] font-bold",
-                    c.score >= 80 ? "bg-status-success/10 text-status-success" :
-                    c.score >= 50 ? "bg-status-warning/10 text-status-warning" :
-                    "bg-muted text-muted-foreground"
-                  )}>{c.score}</span>
-                )}
-                <StatusBadge variant={statusVariant(c.status)}>{c.status}</StatusBadge>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Tabs defaultValue="pitches" className="space-y-3">
+        <TabsList>
+          <TabsTrigger value="pitches">Pitches ({pitches.length})</TabsTrigger>
+          <TabsTrigger value="contacts">Contacts ({filteredContacts.length})</TabsTrigger>
+          <TabsTrigger value="activity">Activity ({activity.length})</TabsTrigger>
+        </TabsList>
 
-      {/* Activity Timeline */}
-      <div className="rounded-lg border border-border/50 bg-card p-5">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Activity Timeline</h2>
-        <div className="space-y-2">
-          {activity.length === 0 && <p className="text-sm text-muted-foreground/40">No activity yet</p>}
-          {activity.map((a: any) => (
-            <div key={a.id} className="flex items-center gap-3 rounded px-3 py-2 transition-colors hover:bg-muted/30">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-              <div className="flex-1">
-                <span className="text-xs font-medium text-foreground">
-                  {a.activity_type?.replace(/_/g, " ")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {" "}→ {a.pr_contacts?.reporter_name || "Unknown"} ({a.pr_contacts?.outlet_name || ""})
-                </span>
-              </div>
-              <StatusBadge variant={statusVariant(a.activity_type)} className="text-[8px]">{a.channel || "—"}</StatusBadge>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {a.created_at ? format(new Date(a.created_at), "MMM d HH:mm") : "—"}
-              </span>
+        <TabsContent value="pitches">
+          <div className="flex gap-4">
+            <div className={cn("space-y-1.5", selectedPitch ? "w-1/2" : "w-full")}>
+              {pitches.map((p: any) => (
+                <button key={p.id} onClick={() => setSelectedPitch(p)} className={cn("w-full rounded-lg border bg-card p-3 text-left transition-all hover:border-blue-200", selectedPitch?.id === p.id ? "border-blue-300 ring-1 ring-blue-100" : "border-border/50")}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground truncate">{p.pitch_title || p.pitch_angle || "Untitled"}</span>
+                    <StatusBadge variant={p.status === "sent" ? "info" : p.status === "approved" ? "success" : "warning"}>{p.status || "draft"}</StatusBadge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1 truncate">{(p.pitch_text || "").slice(0, 80) || "\u2014"}</p>
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+            {selectedPitch && (
+              <div className="flex-1 rounded-lg border border-border/50 bg-card p-4 overflow-auto">
+                <h3 className="text-sm font-bold text-foreground mb-2">{selectedPitch.pitch_title || selectedPitch.pitch_angle}</h3>
+                <StatusBadge variant="default">{selectedPitch.status || "draft"}</StatusBadge>
+                <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm text-foreground whitespace-pre-wrap leading-relaxed">{selectedPitch.pitch_text || "No content"}</div>
+                <button onClick={() => setSelectedPitch(null)} className="mt-3 text-[10px] text-blue-500 hover:underline">Close</button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="contacts">
+          <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-muted/30">
+                {["Name", "Outlet", "Email", "Score", "Tags"].map(h => (
+                  <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {filteredContacts.slice(0, 50).map((c: any) => (
+                  <tr key={c.id} className="border-b border-border/20 hover:bg-muted/20">
+                    <td className="px-3 py-2 font-semibold text-foreground">{c.reporter_name || c.contact_name || "\u2014"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.outlet_name || c.company || "\u2014"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.email || "\u2014"}</td>
+                    <td className="px-3 py-2 font-mono text-xs font-bold">{c.score || "\u2014"}</td>
+                    <td className="px-3 py-2">{(c.tags || []).slice(0, 3).map((t: string, i: number) => <StatusBadge key={i} variant="default">{t}</StatusBadge>)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="activity">
+          <div className="space-y-1.5">
+            {activity.map((a: any) => (
+              <div key={a.id} className="flex items-center gap-3 rounded-md border border-border/30 p-3">
+                <Send className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-foreground truncate">{a.subject || a.action_type || "\u2014"}</p>
+                  <p className="text-[10px] text-muted-foreground">{a.recipient || a.outlet || "\u2014"}</p>
+                </div>
+                <span className="font-mono text-[9px] text-muted-foreground">{a.created_at ? format(new Date(a.created_at), "MMM d") : "\u2014"}</span>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
