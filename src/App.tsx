@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import Home from "./pages/Home";
 import Commands from "./pages/Commands";
-import Chat from "./pages/Chat";
 import Events from "./pages/Events";
 import Outreach from "./pages/Outreach";
 import Leads from "./pages/Leads";
@@ -37,7 +36,6 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/commands" element={<Commands />} />
-            <Route path="/chat" element={<Chat />} />
             <Route path="/events" element={<Events />} />
             <Route path="/outreach" element={<Outreach />} />
             <Route path="/leads" element={<Leads />} />

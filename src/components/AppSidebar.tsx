@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Terminal, MessageSquare, Calendar, Send, Target, Inbox,
+  LayoutDashboard, Terminal, Calendar, Send, Target, Inbox,
   Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -14,7 +14,6 @@ import {
 const MAIN_NAV = [
   { title: "HOME", url: "/", icon: LayoutDashboard },
   { title: "COMMANDS", url: "/commands", icon: Terminal },
-  { title: "CHAT", url: "/chat", icon: MessageSquare },
 ];
 
 const COMMS_NAV = [

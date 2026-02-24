@@ -1,27 +1,25 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { DIVISIONS, BRAND_EMAILS } from "@/lib/constants";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Send, RefreshCw, Loader2, FileText } from "lucide-react";
+import { Mail, Send, RefreshCw, Loader2, FileText, ChevronLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-const GMAIL_ACCOUNTS = [
-  "dolodorsey@gmail.com", "drdorseyassistant@gmail.com", "foreverfutbolmuseum@gmail.com",
-  "justhuglife.forever@gmail.com", "thecaspergroupworldwide@gmail.com",
-  "thekollectivehospitality@gmail.com", "theumbrellagroupworldwide@gmail.com",
-];
+import { useNavigate } from "react-router-dom";
 
 const EmailInbox = () => {
+  const navigate = useNavigate();
   const [accountFilter, setAccountFilter] = useState("all");
   const [selectedThread, setSelectedThread] = useState<any>(null);
   const [liveEmails, setLiveEmails] = useState<any[]>([]);
   const [fetchingLive, setFetchingLive] = useState(false);
+  const [collapsedDivs, setCollapsedDivs] = useState<Record<string, boolean>>({});
 
-  // DB threads
   const { data: threads = [] } = useQuery({
     queryKey: ["email-threads"],
     queryFn: async () => {
@@ -30,7 +28,6 @@ const EmailInbox = () => {
     },
   });
 
-  // DB messages for selected thread
   const { data: messages = [] } = useQuery({
     queryKey: ["thread-messages", selectedThread?.id],
     queryFn: async () => {
@@ -41,7 +38,6 @@ const EmailInbox = () => {
     enabled: !!selectedThread,
   });
 
-  // Communications (outbox)
   const { data: comms = [] } = useQuery({
     queryKey: ["email-comms"],
     queryFn: async () => {
@@ -50,7 +46,6 @@ const EmailInbox = () => {
     },
   });
 
-  // Scripts
   const { data: scripts = [] } = useQuery({
     queryKey: ["email-scripts"],
     queryFn: async () => {
@@ -59,7 +54,6 @@ const EmailInbox = () => {
     },
   });
 
-  // Fetch live emails from n8n Gmail workflow
   const fetchLiveEmails = async () => {
     setFetchingLive(true);
     try {
@@ -74,146 +68,164 @@ const EmailInbox = () => {
         setLiveEmails(emails);
         toast.success(`Fetched ${emails.length} live emails`);
       } else { toast.error("Gmail fetch failed: " + res.status); }
-    } catch (e) { toast.error("Could not reach Gmail workflow"); }
+    } catch { toast.error("Could not reach Gmail workflow"); }
     setFetchingLive(false);
   };
 
+  const toggleDiv = (key: string) => setCollapsedDivs(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Group email accounts by division
+  const emailDivisions = DIVISIONS.map(d => ({
+    ...d,
+    accounts: Object.entries(BRAND_EMAILS)
+      .filter(([, v]) => v.division === d.key && v.email)
+      .map(([name, v]) => ({ name, email: v.email })),
+  })).filter(d => d.accounts.length > 0);
+
+  const filteredThreads = accountFilter === "all" ? threads : threads.filter((t: any) =>
+    (t.account || t.email || "").toLowerCase().includes(accountFilter.toLowerCase())
+  );
   const filteredComms = accountFilter === "all" ? comms : comms.filter((c: any) =>
-    (c.sender_identifier || "").includes(accountFilter) || (c.recipient_identifier || "").includes(accountFilter)
+    (c.from_address || c.to_address || c.recipient_identifier || "").toLowerCase().includes(accountFilter.toLowerCase())
   );
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Email</h1>
-        <Button size="sm" className="gap-1.5" onClick={fetchLiveEmails} disabled={fetchingLive}>
-          {fetchingLive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          {fetchingLive ? "Fetching..." : "Pull Live Emails"}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button>
+          <h1 className="text-2xl font-bold tracking-tight">Email Inbox</h1>
+        </div>
+        <Button size="sm" onClick={fetchLiveEmails} disabled={fetchingLive}>
+          {fetchingLive ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          Fetch Live
         </Button>
       </div>
 
-      {/* Account filter */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
-        <button onClick={() => setAccountFilter("all")} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold", accountFilter === "all" ? "bg-red-100 text-red-700" : "text-muted-foreground hover:bg-muted")}>ALL</button>
-        {GMAIL_ACCOUNTS.map(a => (
-          <button key={a} onClick={() => setAccountFilter(a)} className={cn("shrink-0 rounded-md px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap", accountFilter === a ? "bg-red-100 text-red-700" : "text-muted-foreground hover:bg-muted")}>{a.split("@")[0]}</button>
-        ))}
-      </div>
-
-      <Tabs defaultValue="inbox" className="space-y-3">
-        <TabsList>
-          <TabsTrigger value="new" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-800">New</TabsTrigger>\n            <TabsTrigger value="inbox">Inbox ({threads.length})</TabsTrigger>
-          <TabsTrigger value="live">Live ({liveEmails.length})</TabsTrigger>
-          <TabsTrigger value="outbox">Outbox ({filteredComms.length})</TabsTrigger>
-          <TabsTrigger value="scripts">Scripts ({scripts.length})</TabsTrigger>
-        </TabsList>
-
-        {/* INBOX — DB threads */}
-        <TabsContent value="inbox">
-          <div className="flex gap-4" style={{ minHeight: "50vh" }}>
-            <div className={cn("space-y-1 overflow-auto", selectedThread ? "w-2/5" : "w-full")}>
-              {threads.map((t: any) => (
-                <button key={t.id} onClick={() => setSelectedThread(t)} className={cn("w-full rounded-lg border bg-card p-3 text-left hover:border-blue-200 transition-all", selectedThread?.id === t.id ? "border-blue-300 ring-1 ring-blue-100" : "border-border/50")}>
-                  <p className="text-xs font-semibold text-foreground truncate">{t.subject || "No subject"}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-muted-foreground truncate">{t.participants || ""}</span>
-                    <span className="text-[9px] text-muted-foreground/40 ml-auto shrink-0">{t.last_message_at ? format(new Date(t.last_message_at), "MMM d") : ""}</span>
-                  </div>
-                </button>
+      <div className="flex gap-4 h-[calc(100vh-160px)]">
+        {/* Left sidebar — brand accounts by division */}
+        <div className="w-72 shrink-0 border rounded-lg bg-white overflow-y-auto">
+          <div
+            className={cn("px-3 py-2 text-xs font-bold cursor-pointer hover:bg-gray-50 border-b",
+              accountFilter === "all" && "bg-gray-100"
+            )}
+            onClick={() => setAccountFilter("all")}
+          >
+            ALL ACCOUNTS
+          </div>
+          {emailDivisions.map(d => (
+            <div key={d.key}>
+              <div
+                className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-gray-50 border-b"
+                onClick={() => toggleDiv(d.key)}
+              >
+                <span className="text-[10px] font-bold tracking-wider" style={{ color: d.color }}>{d.icon} {d.name}</span>
+                {collapsedDivs[d.key] ? <ChevronRight className="h-3 w-3 text-gray-400" /> : <ChevronDown className="h-3 w-3 text-gray-400" />}
+              </div>
+              {!collapsedDivs[d.key] && d.accounts.map(a => (
+                <div
+                  key={a.email}
+                  className={cn("px-4 py-1.5 cursor-pointer hover:bg-gray-50 border-b border-gray-100",
+                    accountFilter === a.email && "bg-blue-50 border-l-2 border-l-blue-500"
+                  )}
+                  onClick={() => setAccountFilter(a.email)}
+                >
+                  <div className="text-xs font-medium truncate">{a.name}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono truncate">{a.email}</div>
+                </div>
               ))}
-              {threads.length === 0 && <p className="py-12 text-center text-xs text-muted-foreground/40">No threads in database</p>}
             </div>
-            {selectedThread && (
-              <div className="flex-1 rounded-lg border border-border/50 bg-card p-4 overflow-auto">
-                <h3 className="text-sm font-bold text-foreground mb-3">{selectedThread.subject || "Thread"}</h3>
-                <div className="space-y-3">
-                  {messages.map((m: any) => (
-                    <div key={m.id} className={cn("rounded-lg p-3 max-w-[85%]", m.direction === "outbound" ? "ml-auto bg-blue-50 border border-blue-200" : "bg-muted/50 border border-border/30")}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-semibold text-muted-foreground">{m.sender || ""}</span>
-                        <span className="text-[9px] text-muted-foreground/40">{m.sent_at ? format(new Date(m.sent_at), "h:mm a") : ""}</span>
+          ))}
+        </div>
+
+        {/* Right content */}
+        <div className="flex-1 min-w-0">
+          <Tabs defaultValue="inbox">
+            <TabsList>
+              <TabsTrigger value="inbox">Inbox ({filteredThreads.length})</TabsTrigger>
+              <TabsTrigger value="outbox">Outbox ({filteredComms.length})</TabsTrigger>
+              <TabsTrigger value="live">Live ({liveEmails.length})</TabsTrigger>
+              <TabsTrigger value="scripts">Scripts ({scripts.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="inbox" className="mt-3">
+              {filteredThreads.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-sm">No threads yet. Click "Fetch Live" to pull emails.</p>
+              ) : (
+                <div className="space-y-1">
+                  {filteredThreads.map((t: any) => (
+                    <div key={t.id} onClick={() => setSelectedThread(t)}
+                      className={cn("p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-all",
+                        selectedThread?.id === t.id && "border-blue-300 bg-blue-50"
+                      )}>
+                      <div className="flex justify-between">
+                        <span className="font-medium text-sm truncate">{t.subject || t.snippet || "No subject"}</span>
+                        <span className="text-[10px] text-muted-foreground">{t.last_message_at ? format(new Date(t.last_message_at), "MMM d") : ""}</span>
                       </div>
-                      <p className="text-xs text-foreground whitespace-pre-wrap">{m.body || m.content || ""}</p>
+                      <div className="text-xs text-muted-foreground truncate">{t.from_name || t.from_address || t.participants || ""}</div>
                     </div>
                   ))}
-                  {messages.length === 0 && <p className="text-xs text-muted-foreground/40 text-center py-4">No messages loaded</p>}
                 </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
+              )}
+              {selectedThread && messages.length > 0 && (
+                <div className="mt-4 border rounded-lg p-4 bg-white">
+                  <h3 className="font-semibold text-sm mb-3">{selectedThread.subject || "Thread"}</h3>
+                  {messages.map((m: any) => (
+                    <div key={m.id} className="mb-3 p-3 bg-gray-50 rounded text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span className="font-medium text-xs">{m.from_address || "Unknown"}</span>
+                        <span className="text-[10px] text-muted-foreground">{m.sent_at ? format(new Date(m.sent_at), "MMM d, h:mm a") : ""}</span>
+                      </div>
+                      <p className="text-xs whitespace-pre-wrap">{m.body || m.snippet || ""}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
-        {/* LIVE — Real-time from n8n */}
-        <TabsContent value="live">
-          {liveEmails.length === 0 ? (
-            <div className="rounded-lg border border-border/50 bg-card p-12 text-center">
-              <Mail className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
-              <p className="text-sm text-muted-foreground">Click "Pull Live Emails" to fetch from Gmail</p>
-              <p className="text-[10px] text-muted-foreground/40 mt-1">Uses n8n Gmail Inbox Fetch workflow</p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {liveEmails.map((e: any, i: number) => (
-                <div key={i} className="rounded-lg border border-border/50 bg-card p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-foreground truncate max-w-[70%]">{e.subject || e.title || "No subject"}</p>
-                    <span className="text-[9px] text-muted-foreground">{e.date || e.received_at || ""}</span>
+            <TabsContent value="outbox" className="mt-3">
+              <div className="space-y-1">
+                {filteredComms.map((c: any) => (
+                  <div key={c.id} className="p-3 border rounded-lg">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-sm">{c.subject || "No subject"}</span>
+                      <Badge variant="secondary" className="text-[10px]">{c.status || c.direction}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">{c.recipient_identifier || c.to_address || ""}</div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">{e.from || e.sender || ""}</p>
-                  {e.snippet && <p className="text-[10px] text-muted-foreground/60 mt-1 line-clamp-2">{e.snippet}</p>}
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="live" className="mt-3">
+              {liveEmails.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-sm">Click "Fetch Live" to pull recent emails from Gmail.</p>
+              ) : (
+                <div className="space-y-1">
+                  {liveEmails.map((e: any, i: number) => (
+                    <div key={i} className="p-3 border rounded-lg">
+                      <div className="font-medium text-sm">{e.subject || "No subject"}</div>
+                      <div className="text-xs text-muted-foreground">{e.from || e.sender || ""}</div>
+                      {e.snippet && <p className="text-xs mt-1 text-muted-foreground truncate">{e.snippet}</p>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+              )}
+            </TabsContent>
 
-        {/* OUTBOX */}
-        <TabsContent value="outbox">
-          <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-muted/30">
-                {["To", "Subject", "Channel", "Direction", "Time"].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
+            <TabsContent value="scripts" className="mt-3">
+              <div className="space-y-2">
+                {scripts.map((s: any) => (
+                  <div key={s.id} className="p-3 bg-white border rounded-lg">
+                    <Badge variant="outline" className="text-[10px] mb-1">{s.brand_key}</Badge>
+                    <p className="text-sm whitespace-pre-wrap">{s.body}</p>
+                  </div>
                 ))}
-              </tr></thead>
-              <tbody>
-                {filteredComms.slice(0, 50).map((c: any) => (
-                  <tr key={c.id} className="border-b border-border/20 hover:bg-muted/20">
-                    <td className="px-3 py-2 text-xs text-foreground truncate max-w-[200px]">{c.recipient_identifier || "\u2014"}</td>
-                    <td className="px-3 py-2 text-xs text-foreground truncate max-w-[200px]">{c.subject || "\u2014"}</td>
-                    <td className="px-3 py-2"><StatusBadge variant="default">{c.channel || "email"}</StatusBadge></td>
-                    <td className="px-3 py-2"><StatusBadge variant={c.direction === "outbound" ? "info" : "default"}>{c.direction}</StatusBadge></td>
-                    <td className="px-3 py-2 text-[9px] text-muted-foreground">{c.created_at ? format(new Date(c.created_at), "MMM d, h:mm a") : "\u2014"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-
-        {/* SCRIPTS */}
-        <TabsContent value="scripts">
-          <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-muted/30">
-                {["Brand", "Hook", "Body", "CTA"].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {scripts.map((s: any, i: number) => (
-                  <tr key={i} className="border-b border-border/20 hover:bg-muted/20">
-                    <td className="px-3 py-2"><StatusBadge variant="default">{s.brand_key}</StatusBadge></td>
-                    <td className="px-3 py-2 text-xs font-semibold text-foreground">{s.hook || "\u2014"}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground max-w-[300px]"><div className="line-clamp-2">{s.body}</div></td>
-                    <td className="px-3 py-2 text-xs text-blue-600">{s.cta || "\u2014"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
     </div>
   );
 };

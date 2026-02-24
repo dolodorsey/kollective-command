@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const ACTIVE_BRANDS = ["good-times","forever-futbol","noir","taste-of-art","remix","wrst-bhvr-napkins","sundays-best","paparazzi","gangsta-gospel"];
 const CITIES = ["Atlanta","Houston","Los Angeles","Charlotte","Washington DC","Miami","Las Vegas"];
 
 const SCRAPE_FORMULAS = [
@@ -282,7 +281,7 @@ const SourcingEngine = () => {
         </Select>
         <Select value={scrapeBrand} onValueChange={setScrapeBrand}>
           <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="Brand (optional)" /></SelectTrigger>
-          <SelectContent><SelectItem value="">All Brands</SelectItem>{ACTIVE_BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+          <SelectContent><SelectItem value="">All Brands</SelectItem>{DIVISIONS.flatMap(d => d.brands).map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
         </Select>
         <div className="flex gap-1">
           <Button size="sm" variant={catFilter === "all" ? "default" : "outline"} className="text-xs h-7" onClick={() => setCatFilter("all")}>All ({SCRAPE_FORMULAS.length})</Button>
