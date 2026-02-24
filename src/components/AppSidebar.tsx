@@ -104,7 +104,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="space-y-1">
             <p className="text-[9px] font-mono text-sidebar-foreground/25">48+ brands · 8 divisions</p>
-            <p className="text-[9px] font-mono text-sidebar-foreground/25">17 GHL · 7 Gmail · 6 IG</p>
+            <p className="text-[9px] font-mono text-sidebar-foreground/25">55 email · 45 IG · 12 AI agents</p>
             {pendingCount > 0 && (
               <p className="text-[9px] font-mono text-status-warning">{pendingCount} pending approvals</p>
             )}

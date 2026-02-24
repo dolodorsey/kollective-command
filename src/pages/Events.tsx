@@ -43,7 +43,7 @@ const Events = () => {
 
   const sel = selectedDate ? getEventsForDate(selectedDate) : null;
 
-  const filtered = events.filter((e: any) => tab === 'all' || (tab === 'huglife' && e.brand === 'huglife') || (tab === 'drdorsey' && (e.series?.includes('dorsey') || e.series?.includes('Dorsey'))));
+  const filtered = events.filter((e: any) => tab === 'all' || (tab === 'huglife' && (e.brand === 'huglife' || e.division === 'huglife')) || (tab === 'museum' && (e.brand === 'scented_flowers' || e.series?.toLowerCase().includes('futbol') || e.series?.toLowerCase().includes('legend') || e.series?.toLowerCase().includes('museum'))) || (tab === 'drdorsey' && (e.series?.includes('dorsey') || e.series?.includes('Dorsey'))) || (tab === 'worldcup' && (e.series?.toLowerCase().includes('world cup') || e.series?.toLowerCase().includes('futbol') || e.brand?.toLowerCase().includes('futbol'))));
 
   return (
     <div className="space-y-6">
@@ -57,9 +57,10 @@ const Events = () => {
             <TabsList>
               <TabsTrigger value="all">All Events</TabsTrigger>
               <TabsTrigger value="huglife">HugLife</TabsTrigger>
+              <TabsTrigger value="museum">Museums</TabsTrigger>
               <TabsTrigger value="drdorsey">Dr. Dorsey</TabsTrigger>
+              <TabsTrigger value="worldcup">World Cup</TabsTrigger>
               <TabsTrigger value="holidays">Holidays</TabsTrigger>
-              <TabsTrigger value="other">Other</TabsTrigger>
             </TabsList>
             <TabsContent value={tab} className="mt-4">
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">

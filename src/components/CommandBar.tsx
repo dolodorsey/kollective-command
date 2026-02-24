@@ -41,7 +41,7 @@ export function CommandBar({ onNavigate }: CommandBarProps) {
     if (mode === "run") {
       await sendCommand(input.trim(), {}, "low");
     } else if (mode === "ask" && onNavigate) {
-      onNavigate("/chat");
+      onNavigate("/outputs");
     }
     setInput("");
   };
