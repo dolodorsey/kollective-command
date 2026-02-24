@@ -5,7 +5,7 @@ import { DIVISIONS, US_HOLIDAYS_2026, CULTURAL_DATES_2026, WORLD_CUP_2026 } from
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight , ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameDay, addMonths, subMonths, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,10 @@ const Events = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Events & Calendar</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button>
+          <h1 className="text-2xl font-bold tracking-tight">Events & Calendar</h1>
+        </div>
         <Badge variant="outline" className="text-base px-4 py-1">{events.length} events</Badge>
       </div>
       <div className="grid grid-cols-3 gap-6">

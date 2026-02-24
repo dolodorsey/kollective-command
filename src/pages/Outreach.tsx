@@ -101,8 +101,14 @@ const Outreach = () => {
           <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder="All Brands" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Brands</SelectItem>
-            {allBrands.map(b => (
-              <SelectItem key={b.key} value={b.key}><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}</span></SelectItem>
+            {DIVISIONS.map(d => (
+              <div key={d.key}>
+                <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground">{d.icon} {d.name}</div>
+                {d.brands.map(b => {
+                  const bk = b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
+                  return <SelectItem key={bk} value={bk}><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />{b}</span></SelectItem>;
+                })}
+              </div>
             ))}
           </SelectContent>
         </Select>
