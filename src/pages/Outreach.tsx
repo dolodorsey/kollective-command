@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CheckCircle2, Circle, Shield, Mail, MessageCircle, MessageSquare, Phone, Target, ArrowLeft ,ChevronLeft } from "lucide-react";
 
-const ACTIVE_BRANDS = ["good-times","forever-futbol","noir","taste-of-art","remix","wrst-bhvr-napkins","sundays-best","paparazzi","gangsta-gospel"];
 const CHANNEL_ICONS: Record<string, any> = { DM: MessageCircle, Comment: MessageSquare, Email: Mail, SMS: Phone };
 const CHANNEL_COLORS: Record<string, string> = { DM: "text-purple-600 bg-purple-50", Comment: "text-blue-600 bg-blue-50", Email: "text-green-600 bg-green-50", SMS: "text-orange-600 bg-orange-50" };
 
@@ -101,8 +100,8 @@ const Outreach = () => {
         <Select value={selectedBrand} onValueChange={setSelectedBrand}>
           <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder="All Brands" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Active Brands</SelectItem>
-            {allBrands.filter(b => ACTIVE_BRANDS.includes(b.key)).map(b => (
+            <SelectItem value="all">All Brands</SelectItem>
+            {allBrands.map(b => (
               <SelectItem key={b.key} value={b.key}><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}</span></SelectItem>
             ))}
           </SelectContent>

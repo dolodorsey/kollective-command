@@ -1,76 +1,134 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { DIVISIONS, CITIES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DIVISIONS, CITIES } from "@/lib/constants";
-import { sendCommand } from "@/lib/commands";
-import { Zap, Image, Calendar, Search, FileText, Megaphone, Send, Sparkles, Copy, ArrowLeft ,ChevronLeft } from "lucide-react";
+import { ChevronLeft, Wand2, Copy, Send, BookOpen, Clock, Star, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { sendCommand } from "@/lib/commands";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const TEMPLATES = [
-  { id: 'ig_pack', name: 'Generate IG Pack', icon: Image, desc: 'Create a set of IG stories + feed posts for an event or brand', fields: ['brand', 'city', 'event', 'tone'] },
-  { id: 'schedule_posts', name: 'Schedule Posts for City', icon: Calendar, desc: 'Queue posts across all brand accounts for a target city', fields: ['brand', 'city', 'date_range'] },
-  { id: 'scrape_enrich', name: 'Scrape & Enrich Leads', icon: Search, desc: 'Find and enrich contacts from IG/Google for a brand', fields: ['brand', 'city', 'source'] },
-  { id: 'daily_brief', name: 'Daily Intel Brief', icon: FileText, desc: 'Generate a morning briefing with tasks, events, and metrics', fields: [] },
-  { id: 'clawbot', name: 'Clawbot Directory Crawl', icon: Search, desc: 'Crawl a directory or website for contact info', fields: ['url'] },
-  { id: 'pr_blast', name: 'PR Blast to Media', icon: Megaphone, desc: 'Send press release to PR contacts for a brand/event', fields: ['brand', 'event', 'subject'] },
-  { id: 'sponsor_deck', name: 'Send Sponsor Deck', icon: Send, desc: 'Email sponsorship deck to potential sponsors', fields: ['brand', 'event', 'recipient'] },
-  { id: 'book_dj', name: 'Book DJ / Host', icon: Sparkles, desc: 'Send booking inquiry to DJ or host from roster', fields: ['name', 'event', 'city', 'date'] },
-  { id: 'event_recap', name: 'Post Event Recap', icon: Image, desc: 'Generate and post recap content after an event', fields: ['brand', 'event', 'city'] },
-  { id: 'comment_drop', name: 'Comment Drop Campaign', icon: Send, desc: 'Drop comments on targeted posts across accounts', fields: ['brand', 'target_handles'] },
+  { id: 'ig_pack', label: 'Generate IG Pack', desc: '5-7 posts + stories for a brand/event', icon: '📸' },
+  { id: 'schedule_posts', label: 'Schedule Posts for City', desc: 'Queue content across platforms for a city drop', icon: '📅' },
+  { id: 'scrape_enrich', label: 'Scrape & Enrich Leads', desc: 'Find and fill in contact details', icon: '🔍' },
+  { id: 'daily_brief', label: 'Daily Intel Brief', desc: 'Morning briefing with tasks, events, metrics', icon: '📊' },
+  { id: 'clawbot', label: 'Clawbot Directory Crawl', desc: 'Crawl a directory or website for contacts', icon: '🤖' },
+  { id: 'pr_blast', label: 'PR Blast to Media', desc: 'Send press release/pitch to media list', icon: '📰' },
+  { id: 'sponsor_deck', label: 'Send Sponsor Deck', desc: 'Email sponsorship package to prospects', icon: '💼' },
+  { id: 'book_dj', label: 'Book DJ / Host', desc: 'Send booking inquiry to talent', icon: '🎧' },
+  { id: 'event_recap', label: 'Post Event Recap', desc: 'Generate recap content from event data', icon: '🎉' },
+  { id: 'comment_drop', label: 'Comment Drop Campaign', desc: 'Drop comments on target posts', icon: '💬' },
 ];
 
 const PROMPTS = [
-  { label: 'IG Story — Event Announcement', prompt: 'You are a social media strategist for {brand}. Create an Instagram Story announcement for {event} happening in {city} on {date}. Requirements: 1) Opening hook that stops the scroll (first 3 seconds matter). 2) Event name with bold visual treatment. 3) Key details: date, city, vibe description. 4) Clear CTA: "Get tickets" with swipe-up or link prompt. 5) Urgency element: limited capacity, early-bird, or exclusive access. Tone: match the brand voice — premium but not corporate, exciting but not desperate. Output: Story text overlay + caption + 3 hashtag options.' },
-  { label: 'IG Feed Post — Brand Awareness', prompt: 'You are the brand voice for {brand}. Write an Instagram feed post that builds brand awareness without selling tickets. The goal is to make people feel the vibe and want to follow. Include: 1) A scroll-stopping first line (no "Hey guys" energy). 2) A short narrative or statement that captures the brand essence. 3) A subtle CTA (follow, save, share — not "buy tickets"). 4) 15-20 hashtags organized by reach tier (5 broad, 10 niche, 5 local to {city}). Tone: confident, culture-forward, intentional. Output: Full caption + hashtag block.' },
-  { label: 'PR Pitch Email — Event Coverage', prompt: 'Write a press pitch email from {brand} to a journalist at {outlet} about {event} in {city}. Structure: 1) Subject line options (3 variations — curiosity, news-angle, exclusive). 2) Opening: Why this matters to their readers (not why it matters to us). 3) The story: What makes this event different from everything else happening that weekend. 4) The ask: Press credentials, interview access, exclusive preview. 5) Closing: Binary time offer for a quick call. Keep it under 200 words. No PR fluff. No "we are excited to announce." Sound like a human who respects their time.' },
-  { label: 'DM Outreach — Influencer Collab', prompt: 'Write an Instagram DM from {brand} to {name} ({handle}) about collaborating on {event} in {city}. Rules: 1) Reference something specific from their recent content (proves you actually follow them). 2) One sentence on what {brand} is. 3) What they get: content opportunity, exclusive access, audience crossover. 4) The ask: 10-minute call or voice note exchange. 5) Keep it under 80 words. No "Dear" or "Hi there." No paragraphs. It should feel like a text from someone in the culture, not a brand bot. Output: Primary DM + follow-up DM (if no reply in 48hrs).' },
-  { label: 'DM Outreach — Sponsor Cold Outreach', prompt: 'Write an Instagram DM from {brand} to the brand partnerships account of {company}. Use this framework: 1) Identify yourself and the brand (one line). 2) State the opportunity: category placement in a multi-city touring {type} experience. 3) Scarcity: "finalizing partner placement now — pre-release." 4) Ask: 10-minute call. Include: "Quick 10-min call?" as the close. Do NOT: promise numbers, negotiate in DMs, sound desperate, or use "partnership opportunity" language. Sound like a placement, not a pitch. Output: Primary DM + "if they ask for details" follow-up.' },
-  { label: 'Email — Sponsor Category Pitch', prompt: 'Write a cold email from {brand} to {name}, {title} at {company}, pitching a category sponsorship slot for {event}. Structure: 1) Subject line options (3 — rotate-ready, no clickbait). 2) Opening: "Global attention / cultural attention will be concentrated here" — make them feel they are about to miss something. 3) What they get: museum integration / on-site presence / content yield / category protection / multi-city visibility. 4) What we need: cash, product, or hybrid. 5) Close: Binary time offer. Keep it under 150 words. Reference the playbook tone: calm, confident, slightly exclusive. Output: Full email with subject line options.' },
-  { label: 'Event Description — Ticketing Platform', prompt: 'Write a full event description for {event} by {brand} in {city} on {date}. This goes on Eventbrite/Partiful/website. Structure: 1) Opening hook (2 sentences max — set the vibe). 2) What to expect (bullet points or short paragraphs — music, food, dress, energy). 3) Dress code suggestion (if applicable). 4) Ticket tiers and what each includes. 5) Important info: doors, age requirement, parking, contact. 6) Social proof or past event reference (if applicable). Tone: Match the brand. For premium events: sophisticated but not stuffy. For culture events: authentic but not try-hard. Output: Full description + meta description (under 160 chars for SEO).' },
-  { label: 'Comment Scripts — Organic Engagement', prompt: 'Write 15 authentic Instagram comments for {brand} to drop on posts in {city}. Rules: 1) NO generic comments ("nice!" "fire!" "love this!"). 2) Each comment must reference something that could actually be in the post (food, fashion, venue, event, art). 3) Mix: 5 compliment-based, 5 question-based, 5 hype-based. 4) Include 2-3 that subtly mention {brand} without being promotional. 5) All comments should sound like they come from a real person who is part of the culture. Output: 15 numbered comments, each under 150 characters.' },
-  { label: 'SMS — Ticket Push / VIP Access', prompt: 'Write 5 SMS message variants for {brand} pushing tickets to {event} in {city} on {date}. Rules: 1) Each message MUST be under 160 characters. 2) Include a shortened ticket link placeholder: [LINK]. 3) Mix of urgency types: limited capacity, early-bird ending, VIP access, exclusive list. 4) NO "Dear" or formal language. These should feel like a text from someone you know. 5) Include the recipient name placeholder: {{Name}}. Output: 5 SMS variants, each under 160 chars with [LINK] placeholder.' },
-  { label: 'Grant Application Narrative', prompt: 'Write a grant application narrative for {brand} applying to {grant_name}. The project is {event} in {city}. Structure: 1) Project summary (100 words — what it is, who it serves, why it matters). 2) Need statement: Why this cultural experience is needed in the community. 3) Target audience and projected reach. 4) Cultural impact: How this contributes to arts/culture/community development. 5) Sustainability: How this will continue beyond the grant period. 6) Budget alignment: How grant funds will be specifically used. Tone: Professional but passionate. Show cultural competency without being performative. Output: Full narrative (500-800 words) + 100-word project summary.' },
-  { label: 'Vendor Outreach — Pitch to Participate', prompt: 'Write a DM or email from {brand} to a {vendor_type} vendor inviting them to participate in {event} in {city}. Structure: 1) What the event is (one sentence — premium, curated, design-forward). 2) Why they were selected (their work stands out, fits the curation). 3) What participation looks like (booth setup, sampling, branded moment). 4) What they get (exposure, content, foot traffic, brand association). 5) Next step: Quick call or application link. Tone: Selective, not desperate. This is a curated showcase, not a vendor fair. Output: Primary outreach + "if interested" follow-up with logistics.' },
-  { label: 'DJ/Host Booking Inquiry', prompt: 'Write a booking inquiry DM from {brand} to {name} for {event} in {city} on {date}. Include: 1) Who you are (one line). 2) The event and what makes it different. 3) What you need: set time, genre fit, vibe alignment. 4) Compensation structure hint (without quoting exact numbers in DM). 5) Ask for availability + rate. Keep it professional but not corporate. This person is talent, not a vendor — treat them accordingly. Output: Primary DM + confirmation follow-up template.' },
-  { label: 'Post-Event Recap Caption', prompt: 'Write a post-event recap Instagram caption for {brand} after {event} in {city}. Rules: 1) Opening line captures the energy of the night (not "what an amazing night"). 2) Highlight 2-3 specific moments (DJ set, crowd energy, a visual moment, a sponsor activation). 3) Thank the community, not just "thanks for coming." 4) Tease what is next without giving away details. 5) CTA: Tag yourself, share your photos, follow for next event. Tone: Reflective but forward-looking. Grateful but not sappy. Output: Full caption + story caption variant + 15 hashtags.' },
-  { label: 'Retargeting DM — Previous Attendee', prompt: 'Write a retargeting Instagram DM from {brand} to someone who attended {previous_event} but has not engaged with the upcoming {event}. Structure: 1) Reference their attendance (make them feel remembered). 2) One line on what is coming next. 3) Exclusive early access or VIP offer. 4) Ask: "You in?" Keep it under 60 words. Should feel personal, not automated. Output: Primary DM + "no reply" follow-up (even shorter).' },
-  { label: 'Weekly Content Calendar', prompt: 'Create a 7-day Instagram content calendar for {brand} promoting {event} in {city} on {date}. For each day provide: 1) Content type (Story, Feed, Reel, Carousel). 2) Visual concept (what the graphic/video should show). 3) Caption (full text). 4) Posting time recommendation. 5) Cross-platform note (what to adjust for Twitter/TikTok). The calendar should build momentum from awareness → interest → urgency → last call. Output: Full 7-day calendar in table format.' },
+  { id: 'ig_story', label: 'IG Story — Event Announcement', prompt: 'Write an Instagram Story sequence (3-5 slides) announcing {{event}} for {{brand}} in {{city}}. Include: teaser slide, details slide, CTA slide. Tone: {{brand_voice}}. Keep each slide under 20 words.' },
+  { id: 'ig_feed', label: 'IG Feed Post — Brand Awareness', prompt: 'Write an Instagram feed post for {{brand}}. Purpose: brand awareness / audience engagement. Include a caption (150-200 words), 5-10 relevant hashtags, and a CTA. Tone: {{brand_voice}}.' },
+  { id: 'pr_pitch', label: 'PR Pitch Email — Event Coverage', prompt: 'Write a PR pitch email for {{event}} by {{brand}} in {{city}}. Target: local entertainment/culture journalist. Include: subject line, 3-paragraph body (hook, details, ask), press contact info placeholder.' },
+  { id: 'dm_influencer', label: 'DM Outreach — Influencer Collab', prompt: 'Write an Instagram DM to an influencer inviting them to collaborate with {{brand}} for {{event}} in {{city}}. Tone: casual, premium, not desperate. Under 60 words. Include CTA to send email + phone + city.' },
+  { id: 'dm_sponsor', label: 'DM Outreach — Sponsor Cold Outreach', prompt: 'Write an Instagram DM to a brand/company pitching a sponsorship opportunity with {{brand}} for {{event}}. Tone: confident, exclusive, not salesy. Under 80 words. Reference category slot + pre-release positioning.' },
+  { id: 'email_sponsor', label: 'Email — Sponsor Category Pitch', prompt: 'Write a cold email pitching a category sponsorship slot for {{event}} by {{brand}} in {{city}}. Include: subject line (4 options), body with scarcity + credibility, binary close (two time options). Tone: corporate-premium.' },
+  { id: 'event_desc', label: 'Event Description — Ticketing Platform', prompt: 'Write an event description for {{event}} by {{brand}} in {{city}} on {{date}}. Format for Eventbrite/ticketing platform. Include: 1-line hook, 3-paragraph description, bullet list of highlights, dress code/vibe, ticket tiers placeholder.' },
+  { id: 'comment_scripts', label: 'Comment Scripts — Organic Engagement', prompt: 'Write 10 Instagram comment scripts for {{brand}} to drop on target posts in {{city}}. Mix: hype comments (3), question-based (3), compliment-based (2), CTA-driven (2). Each under 15 words. No emojis unless brand voice requires.' },
+  { id: 'sms_push', label: 'SMS — Ticket Push / VIP Access', prompt: 'Write 3 SMS messages for {{brand}} promoting {{event}} in {{city}}. Each under 160 characters. Include: urgency-based, exclusivity-based, and last-chance. Include ticket link placeholder.' },
+  { id: 'grant_narrative', label: 'Grant Application Narrative', prompt: 'Write a grant application narrative for {{brand}} ({{division}}). Cover: mission, community impact, program description, target demographics, measurable outcomes. Tone: professional, impact-focused. 500-800 words.' },
+  { id: 'vendor_outreach', label: 'Vendor Outreach — Pitch to Participate', prompt: 'Write an outreach email/DM to a vendor/artist inviting them to participate in {{event}} by {{brand}} in {{city}}. Include: what they get (exposure, foot traffic, content), what we need, CTA to send contact info.' },
+  { id: 'dj_booking', label: 'DJ/Host Booking Inquiry', prompt: 'Write a booking inquiry DM/email for a DJ or host for {{event}} by {{brand}} in {{city}} on {{date}}. Include: event details, expected crowd, compensation structure placeholder, CTA for availability.' },
+  { id: 'post_recap', label: 'Post-Event Recap Caption', prompt: 'Write a post-event Instagram caption for {{event}} by {{brand}} in {{city}}. Tone: grateful, energetic, forward-looking. Include: highlight moments, thank-yous, tease next event, CTA. 150-250 words.' },
+  { id: 'retarget_dm', label: 'Retargeting DM — Previous Attendee', prompt: 'Write an Instagram DM to someone who attended a previous {{brand}} event, inviting them to {{event}} in {{city}}. Reference their past attendance. Tone: familiar, exclusive. Under 60 words.' },
+  { id: 'weekly_calendar', label: 'Weekly Content Calendar', prompt: 'Create a 7-day content calendar for {{brand}} across Instagram (feed + stories) and any secondary platform. Include: daily post type, caption summary, hashtag themes, story ideas. Focus on {{city}} market.' },
 ];
 
 const Outputs = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("generate");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+  const [brand, setBrand] = useState("");
+  const [city, setCity] = useState("");
+  const [event, setEvent] = useState("");
+  const [customInput, setCustomInput] = useState("");
+  const [generatedOutput, setGeneratedOutput] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [favoritePrompts, setFavoritePrompts] = useState<Set<string>>(new Set());
 
-  const { data: history = [] } = useQuery({
-    queryKey: ["output-history"],
+  const { data: events = [] } = useQuery({
+    queryKey: ["events-outputs"],
     queryFn: async () => {
-      const { data } = await supabase.from("command_log")
-        .select("*")
-        .in("command_type", ["content.generate", "ig_pack", "pr_blast", "schedule_posts", "scrape_enrich", "daily_brief", "clawbot", "sponsor_deck", "book_dj", "event_recap", "comment_drop"])
-        .order("executed_at", { ascending: false })
-        .limit(20);
+      const { data } = await supabase.from("events").select("id, title, brand_key, city, event_date").order("event_date").limit(50);
       return data || [];
     },
   });
 
-  const runTemplate = () => {
-    if (!selectedTemplate) return;
-    sendCommand(selectedTemplate, { ...formData, approval_required: true });
-    setSelectedTemplate(null);
-    setFormData({});
+  const { data: history = [] } = useQuery({
+    queryKey: ["output-history"],
+    queryFn: async () => {
+      const { data } = await supabase.from("command_log").select("*")
+        .in("command_type", ["content.generate", "ig_pack", "pr_blast", "schedule_posts", "scrape_enrich", "daily_brief", "clawbot", "sponsor_deck", "book_dj", "event_recap", "comment_drop"])
+        .order("executed_at", { ascending: false }).limit(50);
+      return data || [];
+    },
+  });
+
+  const { data: playbooks = [] } = useQuery({
+    queryKey: ["brand-playbooks"],
+    queryFn: async () => {
+      const { data } = await supabase.from("mcp_outreach_scripts").select("*").order("brand_key").limit(200);
+      return data || [];
+    },
+  });
+
+  const selectedPromptDef = PROMPTS.find(p => p.id === selectedPrompt);
+  const allBrands = DIVISIONS.flatMap(d => d.brands);
+  const filteredEvents = brand ? events.filter((e: any) => (e.brand_key || '').toLowerCase().includes(brand.toLowerCase().replace(/[^a-z]/g, ''))) : events;
+
+  const handleGenerate = async () => {
+    if (!selectedPrompt && !selectedTemplate) { toast.error("Select a template or prompt first"); return; }
+    setGenerating(true);
+    try {
+      let prompt = selectedPromptDef?.prompt || `Generate ${selectedTemplate} content`;
+      prompt = prompt.replace(/\{\{brand\}\}/g, brand || 'the brand')
+        .replace(/\{\{city\}\}/g, city || 'the city')
+        .replace(/\{\{event\}\}/g, event || 'the event')
+        .replace(/\{\{date\}\}/g, '')
+        .replace(/\{\{brand_voice\}\}/g, 'confident, premium, culturally aware')
+        .replace(/\{\{division\}\}/g, DIVISIONS.find(d => d.brands.some(b => b === brand))?.name || '');
+      if (customInput) prompt += `\n\nAdditional context: ${customInput}`;
+
+      const res = await fetch("https://drdorsey.app.n8n.cloud/webhook/ai-chat-claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt, system: `You are a content creator for ${brand || 'Kollective Hospitality Group'}. Generate professional, on-brand content.` }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGeneratedOutput(data.response || data.text || data.content || JSON.stringify(data));
+        toast.success("Content generated");
+      } else {
+        setGeneratedOutput(`[Generation failed — status ${res.status}. Edit this field manually or retry.]`);
+        toast.error("Generation failed — you can edit manually");
+      }
+    } catch {
+      setGeneratedOutput("[Could not reach AI endpoint. Edit this field manually.]");
+      toast.error("Could not reach AI — edit manually");
+    }
+    setGenerating(false);
   };
 
-  const allBrands = DIVISIONS.flatMap(d => d.brands);
-  const tmpl = TEMPLATES.find(t => t.id === selectedTemplate);
+  const handleCopy = () => { navigator.clipboard.writeText(generatedOutput); toast.success("Copied to clipboard"); };
+  const handleSave = async () => {
+    await sendCommand("content.generate", { brand, city, event, template: selectedTemplate, prompt: selectedPrompt, output: generatedOutput }, "brand", brand);
+    toast.success("Saved to command log");
+    queryClient.invalidateQueries({ queryKey: ["output-history"] });
+  };
 
   return (
     <div className="space-y-6">
@@ -81,84 +139,161 @@ const Outputs = () => {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="generate">Generate</TabsTrigger>
-          <TabsTrigger value="templates">Prompt Templates ({PROMPTS.length})</TabsTrigger>
-          <TabsTrigger value="history">History ({history.length})</TabsTrigger>
+          <TabsTrigger value="generate"><Wand2 className="h-3 w-3 mr-1" /> Generate</TabsTrigger>
+          <TabsTrigger value="prompts"><BookOpen className="h-3 w-3 mr-1" /> Prompt Library ({PROMPTS.length})</TabsTrigger>
+          <TabsTrigger value="playbooks">Playbooks ({playbooks.length})</TabsTrigger>
+          <TabsTrigger value="history"><Clock className="h-3 w-3 mr-1" /> History ({history.length})</TabsTrigger>
         </TabsList>
 
+        {/* GENERATE TAB */}
         <TabsContent value="generate" className="mt-4">
-          {!selectedTemplate ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {TEMPLATES.map(t => (
-                <button key={t.id} onClick={() => setSelectedTemplate(t.id)}
-                  className="flex flex-col items-center gap-2 p-5 bg-white border rounded-lg hover:border-gray-300 hover:shadow-sm transition-all text-center">
-                  <t.icon className="h-7 w-7 text-gray-600" />
-                  <div className="font-semibold text-xs">{t.name}</div>
-                  <div className="text-[10px] text-muted-foreground leading-tight">{t.desc}</div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white border rounded-lg p-6 max-w-lg">
-              <h3 className="font-semibold text-lg mb-1">{tmpl?.name}</h3>
-              <p className="text-sm text-muted-foreground mb-4">{tmpl?.desc}</p>
-              <div className="space-y-3">
-                {tmpl?.fields.includes('brand') && (
-                  <Select value={formData.brand || ''} onValueChange={v => setFormData({...formData, brand: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
-                    <SelectContent>{allBrands.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Config */}
+            <div className="space-y-4">
+              {/* Step 1: Template */}
+              <div>
+                <label className="text-xs font-bold tracking-wider text-muted-foreground mb-2 block">1. OUTPUT TYPE</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TEMPLATES.map(t => (
+                    <button key={t.id} onClick={() => setSelectedTemplate(t.id)}
+                      className={cn("text-left p-3 border rounded-lg transition-all hover:shadow-sm", selectedTemplate === t.id ? "border-blue-500 bg-blue-50" : "hover:border-gray-300")}>
+                      <span className="text-lg mr-1">{t.icon}</span>
+                      <span className="font-medium text-xs">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Step 2: Prompt */}
+              <div>
+                <label className="text-xs font-bold tracking-wider text-muted-foreground mb-2 block">2. PROMPT TEMPLATE</label>
+                <Select value={selectedPrompt || ''} onValueChange={setSelectedPrompt}>
+                  <SelectTrigger><SelectValue placeholder="Select a prompt..." /></SelectTrigger>
+                  <SelectContent>
+                    {PROMPTS.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {selectedPromptDef && <p className="text-xs text-muted-foreground mt-1 bg-gray-50 rounded p-2">{selectedPromptDef.prompt.slice(0, 150)}...</p>}
+              </div>
+              {/* Step 3: Entity */}
+              <div>
+                <label className="text-xs font-bold tracking-wider text-muted-foreground mb-2 block">3. ENTITY</label>
+                <div className="space-y-2">
+                  <Select value={brand} onValueChange={setBrand}>
+                    <SelectTrigger><SelectValue placeholder="Brand" /></SelectTrigger>
+                    <SelectContent>
+                      {DIVISIONS.map(d => (
+                        <div key={d.key}>
+                          <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground">{d.icon} {d.name}</div>
+                          {d.brands.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        </div>
+                      ))}
+                    </SelectContent>
                   </Select>
-                )}
-                {tmpl?.fields.includes('city') && (
-                  <Select value={formData.city || ''} onValueChange={v => setFormData({...formData, city: v})}>
-                    <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
+                  <Select value={event} onValueChange={setEvent}>
+                    <SelectTrigger><SelectValue placeholder="Event (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {filteredEvents.map((e: any) => <SelectItem key={e.id} value={e.title}>{e.title} — {e.city}{e.event_date ? ` (${format(new Date(e.event_date), 'MMM d')})` : ''}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={city} onValueChange={setCity}>
+                    <SelectTrigger><SelectValue placeholder="City" /></SelectTrigger>
                     <SelectContent>{CITIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
-                )}
-                {tmpl?.fields.filter(f => !['brand','city'].includes(f)).map(f => (
-                  <Input key={f} placeholder={f.replace(/_/g, ' ')} value={formData[f] || ''} onChange={e => setFormData({...formData, [f]: e.target.value})} />
-                ))}
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={runTemplate}><Zap className="h-4 w-4 mr-1" /> Run (Requires Approval)</Button>
-                <Button variant="ghost" onClick={() => { setSelectedTemplate(null); setFormData({}); }}>Cancel</Button>
+              {/* Custom input */}
+              <div>
+                <label className="text-xs font-bold tracking-wider text-muted-foreground mb-2 block">4. ADDITIONAL CONTEXT (optional)</label>
+                <Textarea placeholder="Any extra details, angle, or instructions..." value={customInput} onChange={e => setCustomInput(e.target.value)} rows={3} />
               </div>
+              <Button onClick={handleGenerate} disabled={generating} className="w-full">
+                {generating ? "Generating..." : <><Wand2 className="h-4 w-4 mr-1" /> Generate</>}
+              </Button>
+            </div>
+
+            {/* Right: Output */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold tracking-wider text-muted-foreground block">5. OUTPUT (editable)</label>
+              <Textarea value={generatedOutput} onChange={e => setGeneratedOutput(e.target.value)} rows={20} placeholder="Generated content will appear here. You can also type/paste directly." className="font-mono text-sm" />
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleCopy} disabled={!generatedOutput}><Copy className="h-3 w-3 mr-1" /> Copy</Button>
+                <Button size="sm" onClick={handleSave} disabled={!generatedOutput}><Check className="h-3 w-3 mr-1" /> Save to Log</Button>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* PROMPT LIBRARY TAB */}
+        <TabsContent value="prompts" className="mt-4">
+          <div className="space-y-3">
+            {PROMPTS.map(p => (
+              <div key={p.id} className="p-4 bg-white border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-sm">{p.label}</div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => { setFavoritePrompts(prev => { const s = new Set(prev); s.has(p.id) ? s.delete(p.id) : s.add(p.id); return s; }); }}>
+                      <Star className={cn("h-3 w-3", favoritePrompts.has(p.id) ? "fill-yellow-400 text-yellow-400" : "")} />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(p.prompt); toast.success("Prompt copied"); }}>
+                      <Copy className="h-3 w-3 mr-1" /> Copy
+                    </Button>
+                    <Button size="sm" onClick={() => { setSelectedPrompt(p.id); setTab("generate"); }}>Use</Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{p.prompt}</p>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* PLAYBOOKS TAB */}
+        <TabsContent value="playbooks" className="mt-4">
+          {playbooks.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground text-sm">No playbook scripts loaded yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {playbooks.map((s: any) => (
+                <div key={s.id} className="p-4 bg-white border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="text-[10px]">{s.brand_key}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{s.channel}</Badge>
+                    {s.script_type && <Badge variant="secondary" className="text-[10px]">{s.script_type}</Badge>}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{s.body}</p>
+                </div>
+              ))}
             </div>
           )}
         </TabsContent>
 
-        <TabsContent value="templates" className="mt-4">
-          <p className="text-sm text-muted-foreground mb-4">Copy these prompts and customize with your brand/event details.</p>
-          <div className="space-y-3">
-            {PROMPTS.map((p, i) => (
-              <div key={i} className="p-4 bg-white border rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-sm">{p.label}</span>
-                  <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(p.prompt); toast.success('Copied!'); }}>
-                    <Copy className="h-3 w-3 mr-1" /> Copy
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground font-mono">{p.prompt}</p>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
+        {/* HISTORY TAB */}
         <TabsContent value="history" className="mt-4">
-          <div className="space-y-2">
-            {history.map((h: any) => (
-              <div key={h.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
-                <div>
-                  <div className="font-medium text-sm">{h.command_type}</div>
-                  <div className="text-xs text-muted-foreground">{h.payload?.brand || ''} {h.payload?.city || ''}</div>
+          {history.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground text-sm">No content generation history yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((h: any) => (
+                <div key={h.id} className="p-3 bg-white border rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-sm">{h.command_type?.replace(/[._]/g, ' ')}</span>
+                    <div className="flex items-center gap-2">
+                      {h.target_key && <Badge variant="outline" className="text-[10px]">{h.target_key}</Badge>}
+                      <Badge className={h.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>{h.status}</Badge>
+                      <span className="text-[10px] text-muted-foreground">{h.executed_at ? format(new Date(h.executed_at), 'MMM d, h:mm a') : ''}</span>
+                    </div>
+                  </div>
+                  {h.payload && (() => {
+                    try {
+                      const p = typeof h.payload === 'string' ? JSON.parse(h.payload) : h.payload;
+                      if (p.output) return <p className="text-xs text-muted-foreground mt-1 truncate">{String(p.output).slice(0, 150)}...</p>;
+                    } catch {}
+                    return null;
+                  })()}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={h.status === 'success' ? 'default' : 'secondary'} className="text-xs">{h.status}</Badge>
-                  <span className="text-xs text-muted-foreground">{h.executed_at ? new Date(h.executed_at).toLocaleDateString() : ''}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
