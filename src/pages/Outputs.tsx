@@ -76,7 +76,7 @@ const Outputs = () => {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-        <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Outputs <div className="flex items-center gap-3"><button onClick={() => navigate("/")} className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-100"><ChevronLeft className="h-4 w-4" /></button><h1 className="text-2xl font-bold tracking-tight">Outputs & Content Engine</h1></div> Content Engine</h1></div>
+        <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Outputs & Content Engine</h1></div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
