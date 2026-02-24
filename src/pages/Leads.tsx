@@ -1,13 +1,38 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DIVISIONS } from "@/lib/constants";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Target, Search, Mail, Phone, Instagram, ArrowLeft ,ChevronLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, Target, Search, Mail, Phone, Instagram, ChevronLeft, Crosshair, Copy, Globe, Linkedin, Music2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+const ACTIVE_BRANDS = ["good-times","forever-futbol","noir","taste-of-art","remix","wrst-bhvr-napkins","sundays-best","paparazzi","gangsta-gospel"];
+const CITIES = ["Atlanta","Houston","Los Angeles","Charlotte","Washington DC","Miami","Las Vegas"];
+
+const SCRAPE_FORMULAS = [
+  { id: "google_venues", label: "Google → Venues/Restaurants", icon: Globe, category: "google", formula: '"{city}" "{type}" site:instagram.com OR site:yelp.com', variables: ["city","type"], example: '"Atlanta" "rooftop bar" site:instagram.com', desc: "Find venue Instagram handles from Google index" },
+  { id: "google_influencers", label: "Google → Influencers by Niche", icon: Globe, category: "google", formula: '"{city}" "{niche}" "influencer" OR "content creator" site:instagram.com', variables: ["city","niche"], example: '"Atlanta" "food blogger" "content creator" site:instagram.com', desc: "Find influencer profiles by city + niche" },
+  { id: "google_djs", label: "Google → DJs / Hosts", icon: Globe, category: "google", formula: '"{city}" "DJ" OR "host" "{genre}" site:instagram.com -agency', variables: ["city","genre"], example: '"Houston" "DJ" "hip hop" site:instagram.com -agency', desc: "Find DJ and host Instagram profiles" },
+  { id: "google_sponsors", label: "Google → Sponsor Contacts", icon: Globe, category: "google", formula: '"{company}" "partnerships" OR "sponsorships" OR "experiential" email site:linkedin.com', variables: ["company"], example: '"Red Bull" "partnerships" email site:linkedin.com', desc: "Find partnership decision-maker info" },
+  { id: "google_pr", label: "Google → PR/Media Contacts", icon: Globe, category: "google", formula: '"{city}" "{beat}" "reporter" OR "journalist" OR "editor" email', variables: ["city","beat"], example: '"Atlanta" "nightlife" OR "entertainment" "reporter" email', desc: "Find journalist emails covering your beat" },
+  { id: "google_grants", label: "Google → Grant Opportunities", icon: Globe, category: "google", formula: '"grant" "{category}" "{city}" OR "{state}" 2026 application', variables: ["category","city","state"], example: '"grant" "arts and culture" "Georgia" 2026 application', desc: "Find active grants for events/arts" },
+  { id: "ig_followers", label: "IG → Competitor Followers", icon: Instagram, category: "instagram", formula: "Scrape followers of @{competitor_handle} → filter by {city} in bio → extract handles", variables: ["competitor_handle","city"], example: "Scrape followers of @daypartyatl → filter 'Atlanta' in bio", desc: "Mine competitor audiences for outreach targets" },
+  { id: "ig_likers", label: "IG → Post Likers/Commenters", icon: Instagram, category: "instagram", formula: "Scrape likers/commenters on {post_url} → filter by follower count > {min_followers}", variables: ["post_url","min_followers"], example: "Scrape likers on competitor event post → filter >1000 followers", desc: "Find engaged users from competitor content" },
+  { id: "ig_hashtag", label: "IG → Hashtag Mining", icon: Instagram, category: "instagram", formula: "Scrape top posts for #{hashtag} → extract poster handles + bios → filter by {city}", variables: ["hashtag","city"], example: "#atlantanightlife → extract handles → filter Atlanta bios", desc: "Mine hashtag feeds for local influencers" },
+  { id: "ig_location", label: "IG → Location Tag Mining", icon: Instagram, category: "instagram", formula: "Scrape recent posts at {location_id} → extract poster handles → filter by engagement rate", variables: ["location_id"], example: "Posts tagged at 'Whiskey Mistress ATL' → extract active posters", desc: "Find people who post from target venues" },
+  { id: "linkedin_sponsors", label: "LinkedIn → Decision Makers", icon: Linkedin, category: "linkedin", formula: '"{company}" AND ("brand partnerships" OR "experiential marketing" OR "sponsorships") AND "{city}"', variables: ["company","city"], example: '"Coca-Cola" AND "brand partnerships" AND "Atlanta"', desc: "Find partnership leads at target companies" },
+  { id: "linkedin_pr", label: "LinkedIn → Journalists", icon: Linkedin, category: "linkedin", formula: '"{beat}" AND ("reporter" OR "journalist" OR "editor") AND "{city}" AND "{outlet_type}"', variables: ["beat","city","outlet_type"], example: '"entertainment" AND "journalist" AND "Atlanta" AND "magazine"', desc: "Find journalists covering your space" },
+  { id: "tiktok_creators", label: "TikTok → Local Creators", icon: Music2, category: "tiktok", formula: "Search TikTok for #{city_hashtag} → filter by follower count > {min} → extract profile links", variables: ["city_hashtag","min"], example: "#atlantanights → filter >5000 followers → extract profiles", desc: "Find TikTok creators for event content partnerships" },
+  { id: "fb_groups", label: "Facebook → Group Mining", icon: Globe, category: "facebook", formula: 'Search FB groups: "{city}" "{interest}" → extract member profiles → cross-reference IG', variables: ["city","interest"], example: '"Atlanta" "nightlife" groups → extract active members', desc: "Mine Facebook groups for warm outreach targets" },
+  { id: "eventbrite_scrape", label: "Eventbrite → Competitor Events", icon: Globe, category: "events", formula: "Scrape attendees/organizers of {event_type} events in {city} on Eventbrite → extract contact info", variables: ["event_type","city"], example: "Day party events in Atlanta → organizer contact info", desc: "Find competitor event organizers and attendees" },
+  { id: "yelp_venues", label: "Yelp → Venue Owners", icon: Globe, category: "directory", formula: "Scrape Yelp for {category} in {city} → extract business names + websites → find owner contacts", variables: ["category","city"], example: "Lounges in Atlanta → extract names + websites", desc: "Build venue owner contact list from Yelp" },
+];
 
 const Leads = () => {
   const navigate = useNavigate();
@@ -70,8 +95,8 @@ const Leads = () => {
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-          <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold text-foreground">Leads & Contacts</h1></div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button>
+          <h1 className="text-2xl font-bold text-foreground">Leads & Contacts</h1>
         </div>
         <span className="text-xs text-muted-foreground">{totalRecords.toLocaleString()} total records across 4 sources</span>
       </div>
@@ -113,6 +138,7 @@ const Leads = () => {
           <TabsTrigger value="leads" className="gap-1"><Target className="h-3.5 w-3.5" />MCP Leads ({filteredLeads.length})</TabsTrigger>
           <TabsTrigger value="pr" className="gap-1"><Mail className="h-3.5 w-3.5" />PR ({filteredPR.length})</TabsTrigger>
           <TabsTrigger value="social" className="gap-1"><Instagram className="h-3.5 w-3.5" />Social ({filteredTargets.length})</TabsTrigger>
+          <TabsTrigger value="sourcing" className="gap-1"><Crosshair className="h-3.5 w-3.5" />Sourcing Engine</TabsTrigger>
         </TabsList>
 
         <TabsContent value="contacts">
@@ -213,7 +239,91 @@ const Leads = () => {
             </table>
           </div>
         </TabsContent>
+
+        <TabsContent value="sourcing">
+          <SourcingEngine />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+const SourcingEngine = () => {
+  const [catFilter, setCatFilter] = useState("all");
+  const [scrapeCity, setScrapeCity] = useState("Atlanta");
+  const [scrapeBrand, setScrapeBrand] = useState("");
+  const categories = [...new Set(SCRAPE_FORMULAS.map(f => f.category))];
+  const filtered = catFilter === "all" ? SCRAPE_FORMULAS : SCRAPE_FORMULAS.filter(f => f.category === catFilter);
+
+  const buildFormula = (formula: typeof SCRAPE_FORMULAS[0]) => {
+    let result = formula.formula;
+    result = result.replace(/\{city\}/g, scrapeCity);
+    return result;
+  };
+
+  const copyFormula = (formula: typeof SCRAPE_FORMULAS[0]) => {
+    navigator.clipboard.writeText(buildFormula(formula));
+    toast.success("Formula copied — paste into search");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Lead Sourcing Engine</h2>
+          <p className="text-xs text-muted-foreground">Copy-paste search formulas to find fresh leads across platforms. {SCRAPE_FORMULAS.length} formulas across {categories.length} sources.</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap items-center">
+        <Select value={scrapeCity} onValueChange={setScrapeCity}>
+          <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="City" /></SelectTrigger>
+          <SelectContent>{CITIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+        </Select>
+        <Select value={scrapeBrand} onValueChange={setScrapeBrand}>
+          <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="Brand (optional)" /></SelectTrigger>
+          <SelectContent><SelectItem value="">All Brands</SelectItem>{ACTIVE_BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+        </Select>
+        <div className="flex gap-1">
+          <Button size="sm" variant={catFilter === "all" ? "default" : "outline"} className="text-xs h-7" onClick={() => setCatFilter("all")}>All ({SCRAPE_FORMULAS.length})</Button>
+          {categories.map(c => (
+            <Button key={c} size="sm" variant={catFilter === c ? "default" : "outline"} className="text-xs h-7 capitalize" onClick={() => setCatFilter(c)}>
+              {c} ({SCRAPE_FORMULAS.filter(f => f.category === c).length})
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {filtered.map(formula => {
+          const Icon = formula.icon;
+          return (
+            <div key={formula.id} className="border rounded-lg p-4 hover:border-gray-300 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="p-2 rounded-lg bg-gray-50 shrink-0"><Icon className="h-4 w-4 text-gray-600" /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{formula.label}</span>
+                      <Badge variant="outline" className="text-[9px] capitalize">{formula.category}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{formula.desc}</p>
+                    <div className="mt-2 bg-gray-50 rounded-md p-2.5 font-mono text-xs text-gray-700 break-all">{buildFormula(formula)}</div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground">Example:</span>
+                      <span className="text-[10px] font-mono text-blue-600">{formula.example}</span>
+                    </div>
+                    <div className="mt-1 flex gap-1">
+                      {formula.variables.map(v => <Badge key={v} variant="secondary" className="text-[8px]">{`{${v}}`}</Badge>)}
+                    </div>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="shrink-0 h-8 text-xs gap-1" onClick={() => copyFormula(formula)}><Copy className="h-3 w-3" />Copy</Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
