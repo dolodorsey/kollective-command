@@ -18,8 +18,8 @@ const CHANNEL_ICONS: Record<string, any> = { DM: MessageCircle, Comment: Message
 const CHANNEL_COLORS: Record<string, string> = { DM: "text-purple-600 bg-purple-50", Comment: "text-blue-600 bg-blue-50", Email: "text-green-600 bg-green-50", SMS: "text-orange-600 bg-orange-50" };
 
 const Outreach = () => {
-  const qc = useQueryClient();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [tab, setTab] = useState("plans");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
@@ -86,7 +86,7 @@ const Outreach = () => {
         <div className="flex items-center gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Outreach Command</h1></div>
+            <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Outreach Command</h1></div></div>
             <p className="text-sm text-muted-foreground mt-0.5">{plans.length} outreach plays across {Object.keys(plansByBrand).length} brands</p>
           </div>
         </div>
@@ -166,7 +166,10 @@ const Outreach = () => {
                           </Badge>
                         </td>
                         <td className="px-4 py-2.5"><Badge variant="outline" className="text-[10px] capitalize">{typeLabels[plan.target_type] || plan.target_type}</Badge></td>
-                        <td className="px-4 py-2.5 text-xs max-w-md">{plan.action_description}</td>
+                        <td className="px-4 py-2.5 text-xs max-w-md">
+                          <div>{plan.action_description}</div>
+                          {plan.template_prompt && <button onClick={() => { setSelectedPlan(plan); }} className="text-[10px] text-blue-600 hover:underline mt-0.5">View prompt →</button>}
+                        </td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">{plan.frequency}</td>
                         <td className="px-4 py-2.5">
                           <Badge className={cn("text-[9px]", plan.priority === "high" ? "bg-red-100 text-red-700" : plan.priority === "medium" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600")}>{plan.priority}</Badge>
@@ -275,4 +278,5 @@ const Outreach = () => {
   );
 };
 
+// Prompt Viewer Dialog - rendered at component level
 export default Outreach;

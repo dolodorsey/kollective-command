@@ -13,8 +13,8 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 const Social = () => {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("targets");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [newComment, setNewComment] = useState("");
@@ -73,7 +73,7 @@ const Social = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-          <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Social Control</h1></div>
+          <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Social Control</h1></div></div>
         </div>
         <Badge variant="outline" className="text-base px-4 py-1">{targets.length} targets</Badge>
       </div>

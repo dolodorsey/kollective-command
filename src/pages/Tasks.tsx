@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { DIVISIONS, TEAM } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckSquare, Plus, Circle, CheckCircle2, Clock, Users, ListChecks, Mail, Search, ChevronLeft, ChevronRight, Library, ExternalLink, User, Trash2, ArrowLeft } from "lucide-react";
+import { CheckSquare, Plus, Circle, CheckCircle2, Clock, Users, ListChecks, Mail, Search, ChevronLeft, Library, ExternalLink, User, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -23,6 +23,7 @@ const ALL_BRANDS = DIVISIONS.flatMap(d => d.brands.map(b => ({
 
 const Tasks = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("board");
   const [brandFilter, setBrandFilter] = useState("all");
   const [memberFilter, setMemberFilter] = useState("all");
@@ -83,10 +84,35 @@ const Tasks = () => {
 
   const advanceStatus = async (e: React.MouseEvent, id: string, current: string) => {
     e.stopPropagation();
+    e.preventDefault();
     const next = current === "todo" || current === "pending" ? "in_progress" : current === "in_progress" || current === "active" ? "done" : "todo";
-    await supabase.from("tasks").update({ status: next, updated_at: new Date().toISOString(), ...(next === "done" ? { completed_at: new Date().toISOString() } : {}) }).eq("id", id);
+    await supabase.from("tasks").update({ status: next, updated_at: new Date().toISOString(), ...(next === "done" ? { completed_at: new Date().toISOString() } : { completed_at: null }) }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["tasks-full"] });
     toast.success(`→ ${next.replace("_", " ")}`);
+  };
+
+  const setTaskStatus = async (id: string, status: string) => {
+    await supabase.from("tasks").update({ status, updated_at: new Date().toISOString(), ...(status === "done" ? { completed_at: new Date().toISOString() } : { completed_at: null }) }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["tasks-full"] });
+    setSelectedTask((prev: any) => prev ? { ...prev, status } : null);
+    toast.success(`Set to ${status.replace("_", " ")}`);
+  };
+
+  const updateTaskField = async (id: string, updates: any) => {
+    await supabase.from("tasks").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id);
+    qc.invalidateQueries({ queryKey: ["tasks-full"] });
+    setSelectedTask((prev: any) => prev ? { ...prev, ...updates } : null);
+    toast.success("Updated");
+  };
+
+  const emailMemberTasks = (member: any) => {
+    const nm = member.name.toLowerCase();
+    const mt = tasks.filter((t: any) => ((t.assigned_to || "").toLowerCase() === nm || (t.assigned_team_member || "").toLowerCase() === nm) && t.status !== "done" && t.status !== "completed");
+    if (mt.length === 0) { toast.info("No open tasks"); return; }
+    const lines = mt.map((t: any, i: number) => { const b = ALL_BRANDS.find(x => x.key === t.brand_key); return `${i+1}. [${b?.name || t.brand_key}] ${t.title} — Due: ${t.due_date ? format(new Date(t.due_date), "MMM d") : "TBD"}${t.links?.length ? "\n   " + t.links.join("\n   ") : ""}`; }).join("\n");
+    const subj = `Your Task List — ${mt.length} Open Tasks (${format(new Date(), "MMM d")})`;
+    const body = `Hi ${member.name},\n\nHere are your current open tasks:\n\n${lines}\n\n— Kollective Command Center`;
+    window.open(`mailto:?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`);
   };
 
   const createFromBank = async (template: any) => {
@@ -143,13 +169,13 @@ const Tasks = () => {
     const brand = ALL_BRANDS.find(b => b.key === task.brand_key);
     const isActive = ACTIVE_BRANDS.includes(task.brand_key);
     return (
-      <div className={cn("p-3 bg-white border rounded-lg hover:border-gray-300 transition-all", task.status === "done" && "opacity-50")}
+      <div className={cn("p-3 bg-white border rounded-lg hover:border-gray-300 transition-all cursor-pointer", task.status === "done" && "opacity-50")}
         onClick={() => setSelectedTask(task)}>
         <div className="flex items-start justify-between gap-2">
           <div className="font-medium text-sm leading-tight flex-1">{task.title || task.description?.substring(0, 60)}</div>
           <button onClick={(e) => advanceStatus(e, task.id, task.status)}
-            className="shrink-0 p-1 rounded hover:bg-gray-100" title="Advance status">
-            <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+            className="shrink-0 p-1 rounded hover:bg-gray-100" title="Click to advance status">
+            {task.status === "done" || task.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : task.status === "in_progress" || task.status === "active" ? <Clock className="h-4 w-4 text-amber-500" /> : <Circle className="h-4 w-4 text-gray-300" />}
           </button>
         </div>
         {task.description && task.title && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</div>}
@@ -164,13 +190,11 @@ const Tasks = () => {
     );
   };
 
-  const navigate = useNavigate();
-
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{filtered.length} tasks {brandFilter !== "all" ? `for ${ALL_BRANDS.find(b => b.key === brandFilter)?.name || brandFilter}` : ""}</p>
@@ -307,7 +331,7 @@ const Tasks = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{openTasks.length} open / {memberTasks.length} total</span>
-                      <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => toast.info(`Email task list to ${member.name} — coming soon`)}><Mail className="h-3 w-3 mr-1" />Email List</Button>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => emailMemberTasks(member)}><Mail className="h-3 w-3 mr-1" />Email List</Button>
                     </div>
                   </div>
                   {memberTasks.length > 0 ? (
@@ -344,9 +368,8 @@ const Tasks = () => {
           {selectedTask && (
             <div className="space-y-4 pt-2">
               <div className="flex flex-wrap gap-2">
-                {selectedTask.brand_key && <Badge variant="outline">{selectedTask.brand_key}</Badge>}
+                {selectedTask.brand_key && <Badge variant="outline">{ALL_BRANDS.find(b => b.key === selectedTask.brand_key)?.name || selectedTask.brand_key}</Badge>}
                 {selectedTask.priority && <Badge className={cn(selectedTask.priority === "P1" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800")}>{selectedTask.priority}</Badge>}
-                <Badge variant="secondary">{selectedTask.status}</Badge>
                 {selectedTask.task_type && <Badge variant="secondary">{selectedTask.task_type}</Badge>}
               </div>
               {selectedTask.description && <p className="text-sm text-muted-foreground">{selectedTask.description}</p>}
@@ -363,9 +386,31 @@ const Tasks = () => {
                 <div><span className="text-muted-foreground">Assigned:</span> {selectedTask.assigned_team_member || selectedTask.assigned_to || "Unassigned"}</div>
                 <div><span className="text-muted-foreground">Due:</span> {selectedTask.due_date ? format(new Date(selectedTask.due_date), "MMM d, yyyy") : "No date"}</div>
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" onClick={(e) => { advanceStatus(e as any, selectedTask.id, selectedTask.status); setSelectedTask(null); }}>Advance →</Button>
-                <Button size="sm" variant="destructive" onClick={async () => { await supabase.from("tasks").delete().eq("id", selectedTask.id); qc.invalidateQueries({ queryKey: ["tasks-full"] }); setSelectedTask(null); toast.success("Deleted"); }}>Delete</Button>
+              {/* Explicit status buttons */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Status</span>
+                <div className="flex gap-2">
+                  {["todo", "in_progress", "done"].map(s => (
+                    <Button key={s} size="sm" variant={selectedTask.status === s ? "default" : "outline"} className="text-xs capitalize flex-1" onClick={() => setTaskStatus(selectedTask.id, s)}>
+                      {s === "todo" ? <Circle className="h-3 w-3 mr-1" /> : s === "in_progress" ? <Clock className="h-3 w-3 mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                      {s.replace("_", " ")}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {/* Assign to team member */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">Assign To</span>
+                <Select value={selectedTask.assigned_team_member || selectedTask.assigned_to || "unassigned"} onValueChange={v => updateTaskField(selectedTask.id, { assigned_to: v === "unassigned" ? null : v, assigned_team_member: v === "unassigned" ? null : v })}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {TEAM.map(m => <SelectItem key={m.name} value={m.name.toLowerCase()}>{m.name} — {m.role}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 pt-2 border-t">
+                <Button size="sm" variant="destructive" onClick={async () => { await supabase.from("tasks").delete().eq("id", selectedTask.id); qc.invalidateQueries({ queryKey: ["tasks-full"] }); setSelectedTask(null); toast.success("Deleted"); }}><Trash2 className="h-3.5 w-3.5 mr-1" />Delete</Button>
               </div>
             </div>
           )}
