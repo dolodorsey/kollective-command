@@ -63,7 +63,7 @@ const Outputs = () => {
   const { data: events = [] } = useQuery({
     queryKey: ["events-outputs"],
     queryFn: async () => {
-      const { data } = await supabase.from("events").select("id, title, brand_key, city, event_date").order("event_date").limit(50);
+      const { data } = await supabase.from("events").select("id, title, brand, city, date").order("date").limit(50);
       return data || [];
     },
   });
@@ -88,7 +88,7 @@ const Outputs = () => {
 
   const selectedPromptDef = PROMPTS.find(p => p.id === selectedPrompt);
   const allBrands = DIVISIONS.flatMap(d => d.brands);
-  const filteredEvents = brand ? events.filter((e: any) => (e.brand_key || '').toLowerCase().includes(brand.toLowerCase().replace(/[^a-z]/g, ''))) : events;
+  const filteredEvents = brand ? events.filter((e: any) => (e.brand || '').toLowerCase().includes(brand.toLowerCase().replace(/[^a-z]/g, ''))) : events;
 
   const handleGenerate = async () => {
     if (!selectedPrompt && !selectedTemplate) { toast.error("Select a template or prompt first"); return; }
@@ -193,7 +193,7 @@ const Outputs = () => {
                     <SelectTrigger><SelectValue placeholder="Event (optional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">None</SelectItem>
-                      {filteredEvents.map((e: any) => <SelectItem key={e.id} value={e.title}>{e.title} — {e.city}{e.event_date ? ` (${format(new Date(e.event_date), 'MMM d')})` : ''}</SelectItem>)}
+                      {filteredEvents.map((e: any) => <SelectItem key={e.id} value={e.title}>{e.title} — {e.city}{e.date ? ` (${format(new Date(e.date), 'MMM d')})` : ''}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={city} onValueChange={setCity}>

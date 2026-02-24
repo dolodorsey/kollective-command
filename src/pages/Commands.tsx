@@ -58,7 +58,7 @@ const Commands = () => {
   const { data: events = [] } = useQuery({
     queryKey: ["events-for-cmds"],
     queryFn: async () => {
-      const { data } = await supabase.from("events").select("id, title, brand_key, city, event_date").order("event_date", { ascending: true }).limit(50);
+      const { data } = await supabase.from("events").select("id, title, brand, city, date").order("date", { ascending: true }).limit(50);
       return data || [];
     },
   });
