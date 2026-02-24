@@ -216,9 +216,9 @@ const Tasks = () => {
           <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="All Brands" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Brands</SelectItem>
-            <SelectItem value="" disabled className="font-bold text-[10px] opacity-40">— ACTIVE —</SelectItem>
+            <SelectItem value="__active__" disabled className="font-bold text-[10px] opacity-40">— ACTIVE —</SelectItem>
             {ALL_BRANDS.filter(b => ACTIVE_BRANDS.includes(b.key)).map(b => <SelectItem key={b.key} value={b.key}><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}</span></SelectItem>)}
-            <SelectItem value="" disabled className="font-bold text-[10px] opacity-40">— OTHERS —</SelectItem>
+            <SelectItem value="__others__" disabled className="font-bold text-[10px] opacity-40">— OTHERS —</SelectItem>
             {ALL_BRANDS.filter(b => !ACTIVE_BRANDS.includes(b.key)).map(b => <SelectItem key={b.key} value={b.key}><span className="flex items-center gap-1.5 opacity-50"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}</span></SelectItem>)}
           </SelectContent>
         </Select>
