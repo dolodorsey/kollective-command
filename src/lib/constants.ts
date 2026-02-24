@@ -145,6 +145,15 @@ export const COMMAND_LABELS: Record<string, { label: string; desc: string }> = {
   'book_dj': { label: 'Book DJ/Host', desc: 'Sends booking inquiry to talent' },
   'event_recap': { label: 'Event Recap', desc: 'Generates post-event content' },
   'comment_drop': { label: 'Comment Drop', desc: 'Drops comments on target posts' },
+  'mcp.gateway': { label: 'MCP Gateway', desc: 'Routes task through MCP core gateway' },
+  'mcp.dispatch': { label: 'MCP Dispatch', desc: 'Dispatches task to brand agent via MCP' },
+  'brand.agent': { label: 'Brand Agent', desc: 'Runs brand-specific AI agent' },
+  'touch.log': { label: 'Log Touch', desc: 'Records a touchpoint for a contact' },
+  'daily.queue': { label: 'Daily Queue', desc: 'Builds daily outreach queue' },
+  'kpi.digest': { label: 'KPI Digest', desc: 'Generates nightly KPI summary' },
+  'lead.intake': { label: 'Lead Intake', desc: 'Processes new lead with scoring' },
+  'system.set_mode': { label: 'Set System Mode', desc: 'Changes system mode (normal/cautious/frozen)' },
+  'freeze.system': { label: 'Freeze System', desc: 'Halts all automated outreach' },
 };
 
 export const WORKFLOW_CATEGORIES: Record<string, { label: string; color: string }> = {

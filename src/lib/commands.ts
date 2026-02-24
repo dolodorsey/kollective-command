@@ -4,27 +4,45 @@ import { toast } from 'sonner';
 const N8N_BASE = "https://drdorsey.app.n8n.cloud";
 
 const COMMAND_ROUTES: Record<string, string> = {
+  // Lead operations
   "brand.scrape_leads": "/webhook/scrape-leads",
   "scrape.&.enrich.leads": "/webhook/scrape-leads",
   "scrape_leads": "/webhook/scrape-leads",
+  "lead.score": "/webhook/lead-intake",
+  "lead.intake": "/webhook/lead-intake",
+  "contact.source": "/webhook/scrape-leads",
+  
+  // AI content generation
   "content.generate": "/webhook/ai-chat-claude",
   "ig_pack": "/webhook/ai-chat-claude",
   "pr_blast": "/webhook/ai-chat-claude",
   "event_recap": "/webhook/ai-chat-claude",
-  "comment_drop": "/webhook/ai-chat-claude",
+  "comment_drop": "/webhook/ig-comment-engine",
   "sms_push": "/webhook/ai-chat-claude",
   "daily_brief": "/webhook/ai-chat-claude",
-  "clawbot": "/webhook/clawbot-integration",
-  "sponsor_deck": "/webhook/exec-job",
+  "schedule_posts": "/webhook/copy-generator",
+  
+  // Event operations
+  "event.launch": "/webhook/event-launch",
+  
+  // Clawbot
+  "clawbot": "/webhook/clawbot-config",
+  
+  // Outreach & messaging
+  "sponsor_deck": "/webhook/sponsor-outreach",
   "book_dj": "/webhook/exec-job",
   "brand.ig_outreach": "/webhook/exec-job",
   "brand.email_blast": "/webhook/exec-job",
   "social_outreach_sync": "/webhook/exec-job",
-  "lead.score": "/webhook/exec-job",
-  "contact.source": "/webhook/exec-job",
   "schedule.messenger": "/webhook/exec-job",
-  "event.launch": "/webhook/event-launch-engine",
-  "schedule_posts": "/webhook/exec-job",
+  
+  // MCP system
+  "mcp.gateway": "/webhook/mcp-gateway",
+  "mcp.dispatch": "/webhook/mcp-dispatcher",
+  "brand.agent": "/webhook/brand-agent",
+  "touch.log": "/webhook/touch-logger",
+  "daily.queue": "/webhook/daily-queue-builder",
+  "kpi.digest": "/webhook/kpi-digest",
 };
 
 export interface Command {

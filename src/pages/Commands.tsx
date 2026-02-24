@@ -31,6 +31,11 @@ const COMMAND_OPTIONS = [
   { id: 'book_dj', label: 'Book DJ / Host', desc: 'Sends booking inquiry to talent', fields: ['brand', 'event', 'city'] },
   { id: 'daily_brief', label: 'Daily Intel Brief', desc: 'Generates morning briefing with tasks, events, metrics', fields: [] },
   { id: 'clawbot', label: 'Clawbot Directory Crawl', desc: 'Crawl a directory or website for contact info', fields: ['url'] },
+  { id: 'event.launch', label: 'Launch Event', desc: 'Triggers flyer generation, captions, and email copy for an event', fields: ['brand', 'event', 'city'] },
+  { id: 'daily.queue', label: 'Build Daily Queue', desc: 'Runs the daily outreach queue builder', fields: [] },
+  { id: 'kpi.digest', label: 'KPI Digest', desc: 'Generates nightly KPI summary across all brands', fields: [] },
+  { id: 'touch.log', label: 'Log Touch', desc: 'Manually log a touchpoint for a brand contact', fields: ['brand', 'recipient'] },
+  { id: 'mcp.dispatch', label: 'MCP Dispatch', desc: 'Route a task through the MCP dispatcher', fields: ['brand'] },
 ];
 
 const Commands = () => {
