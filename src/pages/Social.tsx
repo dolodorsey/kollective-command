@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, Send, Plus, Save, Trash2, ArrowLeft } from "lucide-react";
+import { MessageCircle, Send, Plus, Save, Trash2, ArrowLeft ,ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -73,7 +73,7 @@ const Social = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-          <h1 className="text-2xl font-bold tracking-tight">Social Control</h1>
+          <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Social Control</h1></div>
         </div>
         <Badge variant="outline" className="text-base px-4 py-1">{targets.length} targets</Badge>
       </div>

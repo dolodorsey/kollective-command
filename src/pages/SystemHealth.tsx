@@ -2,10 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Activity, Database, Zap, AlertTriangle, CheckCircle, Clock, Server } from "lucide-react";
+import { Activity, Database, Zap, AlertTriangle, CheckCircle, Clock, Server ,ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const SystemHealth = () => {
+  const navigate = useNavigate();
   const { data: webhookHealth = [] } = useQuery({
     queryKey: ["webhook-health"],
     queryFn: async () => {

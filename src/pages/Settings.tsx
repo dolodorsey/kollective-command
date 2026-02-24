@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { DATA_SOURCES, AI_AGENTS } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Database, Bot, Key } from "lucide-react";
+import { ExternalLink, Database, Bot, Key ,ChevronLeft } from "lucide-react";
 
 const Settings = () => {
   const { data: config = [] } = useQuery({
@@ -24,7 +24,7 @@ const Settings = () => {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold tracking-tight">Settings & Data Sources</h1>
+      <div className="flex items-center gap-3"><button onClick={() => window.history.back()} className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg></button><h1 className="text-2xl font-bold tracking-tight">Settings & Data Sources</h1></div>
 
       <div>
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-4"><Database className="h-5 w-5" /> Google Sheet Sources</h2>

@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Shield, Mail, MessageCircle, MessageSquare, Phone, Target, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Circle, Shield, Mail, MessageCircle, MessageSquare, Phone, Target, ArrowLeft ,ChevronLeft } from "lucide-react";
 
 const ACTIVE_BRANDS = ["good-times","forever-futbol","noir","taste-of-art","remix","wrst-bhvr-napkins","sundays-best","paparazzi","gangsta-gospel"];
 const CHANNEL_ICONS: Record<string, any> = { DM: MessageCircle, Comment: MessageSquare, Email: Mail, SMS: Phone };
@@ -22,6 +23,7 @@ const Outreach = () => {
   const [tab, setTab] = useState("plans");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
   const allBrands = DIVISIONS.flatMap(d =>
     d.brands.map(b => ({ key: b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, ""), name: b, division: d.key, color: d.color }))
@@ -84,7 +86,7 @@ const Outreach = () => {
         <div className="flex items-center gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Outreach Command</h1>
+            <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Outreach Command</h1></div>
             <p className="text-sm text-muted-foreground mt-0.5">{plans.length} outreach plays across {Object.keys(plansByBrand).length} brands</p>
           </div>
         </div>
@@ -146,6 +148,7 @@ const Outreach = () => {
                   <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Frequency</th>
                   <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Priority</th>
                   <th className="text-center px-4 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Status</th>
+                  <th className="text-center px-4 py-2 text-[10px] font-semibold uppercase text-muted-foreground">Prompt</th>
                 </tr></thead>
                 <tbody>
                   {brandPlans.map((plan: any) => {
@@ -168,7 +171,7 @@ const Outreach = () => {
                         <td className="px-4 py-2.5">
                           <Badge className={cn("text-[9px]", plan.priority === "high" ? "bg-red-100 text-red-700" : plan.priority === "medium" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600")}>{plan.priority}</Badge>
                         </td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-4 py-2.5 text-center"><button onClick={(e) => { e.stopPropagation(); setSelectedPlan(plan); }} className="text-[9px] text-blue-600 hover:underline mr-1">{plan.template_prompt ? "View Prompt" : ""}</button></td><td className="px-4 py-2.5 text-center">
                           <Badge variant={plan.approved ? "default" : "secondary"} className="text-[9px]">{plan.approved ? "Approved" : "Proposed"}</Badge>
                         </td>
                       </tr>
@@ -228,6 +231,46 @@ const Outreach = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* PLAN DETAIL / PROMPT VIEWER */}
+      {selectedPlan && (
+        <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Badge className={cn("text-[10px] gap-1", CHANNEL_COLORS[selectedPlan.channel] || "")}>
+                  {selectedPlan.channel}
+                </Badge>
+                <span>{selectedPlan.brand_name}</span>
+                <Badge variant="outline" className="text-[10px] capitalize">{typeLabels[selectedPlan.target_type] || selectedPlan.target_type}</Badge>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground block mb-1">Action</span>
+                <p className="text-sm">{selectedPlan.action_description}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div><span className="text-muted-foreground">Frequency:</span> {selectedPlan.frequency}</div>
+                <div><span className="text-muted-foreground">Priority:</span> {selectedPlan.priority}</div>
+                <div><span className="text-muted-foreground">Status:</span> {selectedPlan.approved ? "Approved" : "Proposed"}</div>
+              </div>
+              {selectedPlan.template_prompt && (
+                <div>
+                  <span className="text-[10px] font-semibold uppercase text-muted-foreground block mb-1">AI Generation Prompt</span>
+                  <pre className="text-xs bg-gray-50 rounded-lg p-4 whitespace-pre-wrap font-mono leading-relaxed max-h-[45vh] overflow-y-auto border">{selectedPlan.template_prompt}</pre>
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" onClick={() => { navigator.clipboard.writeText(selectedPlan.template_prompt || ""); toast.success("Prompt copied"); }}>Copy Prompt</Button>
+                <Button size="sm" variant={selectedPlan.approved ? "secondary" : "default"} onClick={() => { approvePlan(selectedPlan.id, !selectedPlan.approved); setSelectedPlan((p: any) => ({ ...p, approved: !p.approved })); }}>
+                  {selectedPlan.approved ? "Revoke Approval" : "Approve"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

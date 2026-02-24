@@ -4,12 +4,14 @@ import { COMMAND_LABELS } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { format } from "date-fns";
-import { Check, X, RotateCcw, Eye } from "lucide-react";
+import { Check, X, RotateCcw, Eye ,ChevronLeft } from "lucide-react";
 import { retryCommand, killCommand } from "@/lib/commands";
 
 const Commands = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<any>(null);
 

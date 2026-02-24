@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DIVISIONS, CITIES } from "@/lib/constants";
 import { sendCommand } from "@/lib/commands";
-import { Zap, Image, Calendar, Search, FileText, Megaphone, Send, Sparkles, Copy, ArrowLeft } from "lucide-react";
+import { Zap, Image, Calendar, Search, FileText, Megaphone, Send, Sparkles, Copy, ArrowLeft ,ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -76,7 +76,7 @@ const Outputs = () => {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-        <h1 className="text-2xl font-bold tracking-tight">Outputs & Content Engine</h1>
+        <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold tracking-tight">Outputs <h1 className="text-2xl font-bold tracking-tight">Outputs & Content Engine</h1> Content Engine</h1></div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>

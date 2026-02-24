@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DIVISIONS } from "@/lib/constants";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Target, Search, Mail, Phone, Instagram, ArrowLeft } from "lucide-react";
+import { Users, Target, Search, Mail, Phone, Instagram, ArrowLeft ,ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -71,7 +71,7 @@ const Leads = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-          <h1 className="text-2xl font-bold text-foreground">Leads & Contacts</h1>
+          <div className="flex items-center gap-3"><Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button><h1 className="text-2xl font-bold text-foreground">Leads <h1 className="text-2xl font-bold text-foreground">Leads & Contacts</h1> Contacts</h1></div>
         </div>
         <span className="text-xs text-muted-foreground">{totalRecords.toLocaleString()} total records across 4 sources</span>
       </div>
