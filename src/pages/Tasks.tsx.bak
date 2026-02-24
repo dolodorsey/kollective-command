@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { DIVISIONS, TEAM } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckSquare, Plus, Circle, CheckCircle2, Clock, Users, ListChecks, Mail, Search, ChevronLeft, ChevronRight, Library, ExternalLink, User, Trash2, ArrowLeft } from "lucide-react";
+import { CheckSquare, Plus, Circle, CheckCircle2, Clock, Users, ListChecks, Mail, Search, ChevronRight, Library, X, ExternalLink, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -164,17 +163,12 @@ const Tasks = () => {
     );
   };
 
-  const navigate = useNavigate();
-
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">{filtered.length} tasks {brandFilter !== "all" ? `for ${ALL_BRANDS.find(b => b.key === brandFilter)?.name || brandFilter}` : ""}</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{filtered.length} tasks {brandFilter !== "all" ? `for ${ALL_BRANDS.find(b => b.key === brandFilter)?.name || brandFilter}` : ""}</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowTaskBank(true)}><Library className="h-3.5 w-3.5 mr-1" />Task Bank</Button>

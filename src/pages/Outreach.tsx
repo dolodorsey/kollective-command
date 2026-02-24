@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { DIVISIONS, LEAD_TYPES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { CheckCircle2, Circle, Shield, Mail, MessageCircle, MessageSquare, Phone, Target } from "lucide-react";
+import { CheckCircle2, Circle, Shield, Mail, MessageCircle, MessageSquare, Phone, Target, ArrowLeft } from "lucide-react";
 
 const ACTIVE_BRANDS = ["good-times","forever-futbol","noir","taste-of-art","remix","wrst-bhvr-napkins","sundays-best","paparazzi","gangsta-gospel"];
 const CHANNEL_ICONS: Record<string, any> = { DM: MessageCircle, Comment: MessageSquare, Email: Mail, SMS: Phone };
@@ -17,6 +18,7 @@ const CHANNEL_COLORS: Record<string, string> = { DM: "text-purple-600 bg-purple-
 
 const Outreach = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("plans");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
@@ -79,9 +81,12 @@ const Outreach = () => {
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Outreach Command</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{plans.length} outreach plays across {Object.keys(plansByBrand).length} brands</p>
+        <div className="flex items-center gap-3">
+          <Button size="sm" variant="ghost" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Outreach Command</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{plans.length} outreach plays across {Object.keys(plansByBrand).length} brands</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">{plans.filter((p: any) => p.approved).length} approved</Badge>
