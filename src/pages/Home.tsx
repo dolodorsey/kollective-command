@@ -99,12 +99,6 @@ const Home = () => {
     },
   });
 
-  useEffect(() => {
-    const ch = supabase.channel("home-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "command_log" }, () => { queryClient.invalidateQueries({ queryKey: ["signal-feed"] }); queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "failure_log" }, () => { queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }); queryClient.invalidateQueries({ queryKey: ["unresolved-failures"] }); })
-      .subscribe();
-    
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-count"],
     queryFn: async () => {
@@ -130,7 +124,12 @@ const Home = () => {
     },
   });
 
-  return () => { supabase.removeChannel(ch); };
+  useEffect(() => {
+    const ch = supabase.channel("home-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "command_log" }, () => { queryClient.invalidateQueries({ queryKey: ["signal-feed"] }); queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "failure_log" }, () => { queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] }); queryClient.invalidateQueries({ queryKey: ["unresolved-failures"] }); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [queryClient]);
 
   const totalBrands = DIVISIONS.reduce((s, d) => s + d.brands.length, 0);
