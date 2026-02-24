@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-const ACTIVE_BRANDS = ["good-times","forever-futbol","noir","taste-of-art","remix","wrst-bhvr-napkins","sundays-best","paparazzi","gangsta-gospel"];
 const ALL_BRANDS = DIVISIONS.flatMap(d => d.brands.map(b => ({
   name: b, division: d.name, divKey: d.key, color: d.color,
   key: b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, ""),
@@ -167,7 +166,6 @@ const Tasks = () => {
 
   const TaskCard = ({ task }: { task: any }) => {
     const brand = ALL_BRANDS.find(b => b.key === task.brand_key);
-    const isActive = ACTIVE_BRANDS.includes(task.brand_key);
     return (
       <div className={cn("p-3 bg-white border rounded-lg hover:border-gray-300 transition-all cursor-pointer", task.status === "done" && "opacity-50")}
         onClick={() => setSelectedTask(task)}>
@@ -216,10 +214,15 @@ const Tasks = () => {
           <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="All Brands" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Brands</SelectItem>
-            <SelectItem value="__active__" disabled className="font-bold text-[10px] opacity-40">— ACTIVE —</SelectItem>
-            {ALL_BRANDS.filter(b => ACTIVE_BRANDS.includes(b.key)).map(b => <SelectItem key={b.key} value={b.key}><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}</span></SelectItem>)}
-            <SelectItem value="__others__" disabled className="font-bold text-[10px] opacity-40">— OTHERS —</SelectItem>
-            {ALL_BRANDS.filter(b => !ACTIVE_BRANDS.includes(b.key)).map(b => <SelectItem key={b.key} value={b.key}><span className="flex items-center gap-1.5 opacity-50"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: b.color }} />{b.name}</span></SelectItem>)}
+            {DIVISIONS.map(d => (
+              <div key={d.key}>
+                <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground">{d.icon} {d.name}</div>
+                {d.brands.map(b => {
+                  const bk = b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "");
+                  return <SelectItem key={bk} value={bk}><span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />{b}</span></SelectItem>;
+                })}
+              </div>
+            ))}
           </SelectContent>
         </Select>
         <Select value={memberFilter} onValueChange={setMemberFilter}>
@@ -258,59 +261,55 @@ const Tasks = () => {
         {/* BY BRAND */}
         <TabsContent value="by_brand" className="mt-4">
           <div className="space-y-6">
-            {ALL_BRANDS.filter(b => ACTIVE_BRANDS.includes(b.key)).map(brand => {
-              const brandTasks = tasks.filter((t: any) => t.brand_key === brand.key);
-              if (brandTasks.length === 0 && brandFilter !== "all") return null;
+            {DIVISIONS.map(div => {
+              const divBrands = ALL_BRANDS.filter(b => b.divKey === div.key);
+              const divTasks = tasks.filter((t: any) => divBrands.some(db => db.key === t.brand_key));
+              if (brandFilter !== "all" && !divBrands.some(db => db.key === brandFilter)) return null;
               return (
-                <div key={brand.key} className="border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
-                      <span className="font-semibold text-sm">{brand.name}</span>
-                      <Badge variant="outline" className="text-[10px]">{brand.division}</Badge>
-                      <Badge className="text-[10px] bg-green-50 text-green-700">Active</Badge>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{brandTasks.length} tasks</span>
+                <div key={div.key}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{div.icon}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{div.name}</span>
+                    <span className="text-[10px] text-muted-foreground">({divTasks.length} tasks)</span>
                   </div>
-                  {brandTasks.length > 0 ? (
-                    <div className="divide-y">
-                      {brandTasks.slice(0, 15).map((t: any) => (
-                        <div key={t.id} className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedTask(t)}>
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <button onClick={(e) => advanceStatus(e, t.id, t.status)} className="shrink-0">
-                              {t.status === "done" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : t.status === "in_progress" ? <Clock className="h-4 w-4 text-amber-500" /> : <Circle className="h-4 w-4 text-gray-300" />}
-                            </button>
-                            <span className={cn("text-sm truncate", t.status === "done" && "line-through text-muted-foreground")}>{t.title}</span>
+                  {divBrands.map(brand => {
+                    const brandTasks = tasks.filter((t: any) => t.brand_key === brand.key);
+                    if (brandTasks.length === 0 && brandFilter !== "all") return null;
+                    return (
+                      <div key={brand.key} className="border rounded-lg overflow-hidden mb-2">
+                        <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b">
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />
+                            <span className="font-semibold text-sm">{brand.name}</span>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {(t.assigned_team_member || t.assigned_to) && <span className="text-[10px] text-muted-foreground">{t.assigned_team_member || t.assigned_to}</span>}
-                            {t.priority && <Badge className={cn("text-[9px]", t.priority === "P1" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800")}>{t.priority}</Badge>}
-                          </div>
+                          <span className="text-xs text-muted-foreground">{brandTasks.length} tasks</span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="px-4 py-6 text-center text-xs text-muted-foreground">No tasks yet. Use Task Bank to add.</div>
-                  )}
+                        {brandTasks.length > 0 ? (
+                          <div className="divide-y">
+                            {brandTasks.slice(0, 15).map((t: any) => (
+                              <div key={t.id} className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedTask(t)}>
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <button onClick={(e) => advanceStatus(e, t.id, t.status)} className="shrink-0">
+                                    {t.status === "done" ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : t.status === "in_progress" ? <Clock className="h-4 w-4 text-amber-500" /> : <Circle className="h-4 w-4 text-gray-300" />}
+                                  </button>
+                                  <span className={cn("text-sm truncate", t.status === "done" && "line-through text-muted-foreground")}>{t.title}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {(t.assigned_team_member || t.assigned_to) && <span className="text-[10px] text-muted-foreground">{t.assigned_team_member || t.assigned_to}</span>}
+                                  {t.priority && <Badge className={cn("text-[9px]", t.priority === "P1" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800")}>{t.priority}</Badge>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="px-4 py-3 text-center text-xs text-muted-foreground">No tasks</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
-            {/* Inactive brands */}
-            <div className="pt-4">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Inactive Brands</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {ALL_BRANDS.filter(b => !ACTIVE_BRANDS.includes(b.key)).map(brand => {
-                  const cnt = tasks.filter((t: any) => t.brand_key === brand.key).length;
-                  return (
-                    <div key={brand.key} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed opacity-40 text-xs">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: brand.color }} />
-                      <span>{brand.name}</span>
-                      {cnt > 0 && <span className="text-muted-foreground">({cnt})</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         </TabsContent>
 
@@ -425,7 +424,14 @@ const Tasks = () => {
             <div className="flex gap-2 flex-wrap items-center">
               <Select value={bankBrand} onValueChange={setBankBrand}>
                 <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder="Select brand *" /></SelectTrigger>
-                <SelectContent>{ALL_BRANDS.filter(b => ACTIVE_BRANDS.includes(b.key)).map(b => <SelectItem key={b.key} value={b.key}>{b.name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {DIVISIONS.map(d => (
+                    <div key={d.key}>
+                      <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground">{d.icon} {d.name}</div>
+                      {d.brands.map(b => { const bk = b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, ""); return <SelectItem key={bk} value={bk}>{b}</SelectItem>; })}
+                    </div>
+                  ))}
+                </SelectContent>
               </Select>
               <Select value={bankMember} onValueChange={setBankMember}>
                 <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Assign to..." /></SelectTrigger>
@@ -483,7 +489,14 @@ const Tasks = () => {
                 <span className="text-[10px] font-semibold uppercase text-muted-foreground block mb-1">Brand *</span>
                 <Select value={newBrand} onValueChange={setNewBrand}>
                   <SelectTrigger className="text-xs"><SelectValue placeholder="Brand" /></SelectTrigger>
-                  <SelectContent>{ALL_BRANDS.map(b => <SelectItem key={b.key} value={b.key}>{b.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {DIVISIONS.map(d => (
+                      <div key={d.key}>
+                        <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground">{d.icon} {d.name}</div>
+                        {d.brands.map(b => { const bk = b.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, ""); return <SelectItem key={bk} value={bk}>{b}</SelectItem>; })}
+                      </div>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div>

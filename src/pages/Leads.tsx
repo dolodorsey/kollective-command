@@ -281,7 +281,15 @@ const SourcingEngine = () => {
         </Select>
         <Select value={scrapeBrand} onValueChange={setScrapeBrand}>
           <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="Brand (optional)" /></SelectTrigger>
-          <SelectContent><SelectItem value="">All Brands</SelectItem>{DIVISIONS.flatMap(d => d.brands).map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+          <SelectContent>
+            <SelectItem value="">All Brands</SelectItem>
+            {DIVISIONS.map(d => (
+              <div key={d.key}>
+                <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground">{d.icon} {d.name}</div>
+                {d.brands.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </div>
+            ))}
+          </SelectContent>
         </Select>
         <div className="flex gap-1">
           <Button size="sm" variant={catFilter === "all" ? "default" : "outline"} className="text-xs h-7" onClick={() => setCatFilter("all")}>All ({SCRAPE_FORMULAS.length})</Button>

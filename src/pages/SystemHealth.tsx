@@ -60,7 +60,10 @@ const SystemHealth = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">System Health</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0"><ChevronLeft className="h-4 w-4" /></Button>
+          <h1 className="text-2xl font-bold tracking-tight">System Health</h1>
+        </div>
         <Badge variant={overallHealth > 80 ? "default" : overallHealth > 50 ? "secondary" : "destructive"} className="text-base px-4 py-1">
           {overallHealth}% Healthy
         </Badge>
