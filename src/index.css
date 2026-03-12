@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,29 +12,29 @@
     --card-foreground: 240 10% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
-    --primary: 240 15% 15%;
+    --primary: 45 72% 40%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 5% 94%;
     --secondary-foreground: 240 10% 25%;
     --muted: 240 5% 92%;
     --muted-foreground: 240 5% 45%;
-    --accent: 240 5% 92%;
+    --accent: 45 72% 40%;
     --accent-foreground: 240 10% 10%;
     --destructive: 0 84% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 5% 88%;
+    --border: 240 5% 90%;
     --input: 240 5% 92%;
-    --ring: 240 15% 15%;
-    --radius: 0.5rem;
+    --ring: 45 72% 40%;
+    --radius: 0.625rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 5% 35%;
-    --sidebar-primary: 240 15% 15%;
+    --sidebar-background: 240 12% 8%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 45 72% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 240 15% 15%;
-    --sidebar-border: 240 5% 90%;
-    --sidebar-ring: 240 15% 15%;
+    --sidebar-accent: 240 10% 14%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 240 8% 16%;
+    --sidebar-ring: 45 72% 45%;
 
     --status-success: 142 71% 35%;
     --status-error: 0 84% 50%;
@@ -41,42 +43,63 @@
     --status-purple: 271 81% 55%;
     --status-pink: 330 81% 50%;
     --status-cyan: 189 94% 35%;
-    --gold: 45 72% 40%;
-    --gold-light: 48 78% 50%;
+    --gold: 45 72% 48%;
+    --gold-light: 48 78% 56%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'DM Sans', sans-serif;
   }
+  h1, h2, h3, h4 { letter-spacing: -0.02em; }
 }
 
-/* Animations */
+/* ── Animations ── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-.animate-fade-in {
-  animation: fade-in 0.35s ease-out;
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
 }
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 140, 50, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(180, 140, 50, 0); }
+}
+.animate-fade-in { animation: fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-slide-in { animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-pulse-gold { animation: pulse-gold 2s ease-in-out infinite; }
 
 @keyframes status-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+.animate-status-pulse { animation: status-pulse 2s ease-in-out infinite; }
 
-.animate-status-pulse {
-  animation: status-pulse 2s ease-in-out infinite;
+/* ── Cards polish ── */
+.card-hover { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+.card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+
+/* ── Gold accent utilities ── */
+.text-gold { color: hsl(45, 72%, 48%); }
+.bg-gold { background-color: hsl(45, 72%, 48%); }
+.border-gold { border-color: hsl(45, 72%, 48%); }
+.gold-glow { box-shadow: 0 0 20px rgba(180, 140, 50, 0.1); }
+
+/* ── Scrollbar — refined ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(240 5% 85%); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(240 5% 70%); }
+
+/* ── Sidebar dark polish ── */
+[data-sidebar] {
+  background: hsl(240 12% 8%) !important;
 }
-
-/* Scrollbar — light */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: hsl(0 0% 96%); }
-::-webkit-scrollbar-thumb { background: hsl(240 5% 78%); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(240 10% 50%); }
+[data-sidebar] .sidebar-brand {
+  border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+}
