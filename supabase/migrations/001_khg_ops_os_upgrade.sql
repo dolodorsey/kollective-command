@@ -1,0 +1,3 @@
+-- KHG Ops OS Upgrade migration placeholder
+-- Full migration package was prepared in ChatGPT sandbox. Apply through Supabase SQL editor if direct migration is blocked.
+-- This repo marker exists so the dashboard build knows the backend tables expected by the new Ops OS pages.
