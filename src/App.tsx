@@ -19,6 +19,13 @@ import SystemHealth from "./pages/SystemHealth";
 import Settings from "./pages/Settings";
 import BrandDetail from "./pages/BrandDetail";
 import DivisionDetail from "./pages/DivisionDetail";
+import OpsSocial from "./pages/OpsSocial";
+import OpsMarketing from "./pages/OpsMarketing";
+import OpsApprovalCenter from "./pages/OpsApprovalCenter";
+import OpsContentStudio from "./pages/OpsContentStudio";
+import OpsEventsCommand from "./pages/OpsEventsCommand";
+import OpsMoney from "./pages/OpsMoney";
+import OpsTasksCommand from "./pages/OpsTasksCommand";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -46,6 +53,13 @@ const App = () => (
             <Route path="/outputs" element={<Outputs />} />
             <Route path="/system" element={<SystemHealth />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/ops-os/social" element={<OpsSocial />} />
+            <Route path="/ops-os/marketing" element={<OpsMarketing />} />
+            <Route path="/ops-os/approvals" element={<OpsApprovalCenter />} />
+            <Route path="/ops-os/content-studio" element={<OpsContentStudio />} />
+            <Route path="/ops-os/events" element={<OpsEventsCommand />} />
+            <Route path="/ops-os/revenue" element={<OpsMoney />} />
+            <Route path="/ops-os/tasks" element={<OpsTasksCommand />} />
             <Route path="/brand/:brandKey" element={<BrandDetail />} />
             <Route path="/division/:slug" element={<DivisionDetail />} />
           </Route>
