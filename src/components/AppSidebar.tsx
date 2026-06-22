@@ -22,6 +22,17 @@ const COMMS_NAV = [
   { title: "PHONE / SMS", url: "/phone", icon: Phone },
 ];
 
+const OPS_OS_NAV = [
+  { title: "OPS HOME", url: "/ops-os", icon: LayoutDashboard },
+  { title: "OPS SOCIAL", url: "/ops-os/social", icon: Share2 },
+  { title: "MARKETING", url: "/ops-os/marketing", icon: Send },
+  { title: "APPROVALS", url: "/ops-os/approvals", icon: CheckSquare },
+  { title: "CONTENT STUDIO", url: "/ops-os/content-studio", icon: FileOutput },
+  { title: "EVENTS COMMAND", url: "/ops-os/events", icon: Calendar },
+  { title: "REVENUE", url: "/ops-os/revenue", icon: Target },
+  { title: "TASK COMMAND", url: "/ops-os/tasks", icon: Terminal },
+];
+
 const OPS_NAV = [
   { title: "EVENTS", url: "/events", icon: Calendar },
   { title: "OUTREACH", url: "/outreach", icon: Send },
@@ -98,6 +109,7 @@ export function AppSidebar() {
       <SidebarContent>
         <NavSection items={MAIN_NAV} />
         <NavSection items={COMMS_NAV} label="COMMUNICATIONS" />
+        <NavSection items={OPS_OS_NAV} label="OPS OS" />
         <NavSection items={OPS_NAV} label="OPERATIONS" />
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
