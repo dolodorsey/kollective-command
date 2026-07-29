@@ -2,7 +2,8 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CommandBar } from "@/components/CommandBar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export function Layout() {
   const location = useLocation();
@@ -29,6 +30,13 @@ export function Layout() {
           <div className="ml-auto hidden items-center gap-2 lg:flex">
             <span className="rounded border border-border/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/40">⌘J</span>
             <span className="rounded border border-border/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/40">⌘/</span>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="ml-2 flex items-center gap-1.5 rounded border border-border/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+            >
+              <LogOut className="h-3 w-3" />
+              Sign out
+            </button>
           </div>
         </header>
         <div className="min-w-0 flex-1 overflow-auto p-3 sm:p-6">

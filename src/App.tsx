@@ -27,6 +27,7 @@ import OpsEventsCommand from "./pages/OpsEventsCommand";
 import OpsMoney from "./pages/OpsMoney";
 import OpsTasksCommand from "./pages/OpsTasksCommand";
 import NotFound from "./pages/NotFound";
+import { AuthGate } from "@/components/AuthGate";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -37,9 +38,10 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Routes>
-          <Route element={<Layout />}>
+      <AuthGate>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <Routes>
+            <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/commands" element={<Commands />} />
             <Route path="/events" element={<Events />} />
@@ -62,10 +64,11 @@ const App = () => (
             <Route path="/ops-os/tasks" element={<OpsTasksCommand />} />
             <Route path="/brand/:brandKey" element={<BrandDetail />} />
             <Route path="/division/:slug" element={<DivisionDetail />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthGate>
     </TooltipProvider>
   </QueryClientProvider>
 );
