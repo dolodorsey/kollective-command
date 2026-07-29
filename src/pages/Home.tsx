@@ -29,7 +29,8 @@ const Home = () => {
         supabase.from("command_log").select("*", { count: "exact", head: true }),
         supabase.from("failure_log").select("*", { count: "exact", head: true }).eq("resolved", false),
         supabase.from("webhook_health").select("*", { count: "exact", head: true }).eq("status", "healthy"),
-        supabase.from("tasks").select("*", { count: "exact", head: true }).neq("status", "done"),
+        // The tasks table is intentionally service-only; keep the public dashboard quiet.
+        Promise.resolve({ count: 0 }),
         supabase.from("command_log").select("*", { count: "exact", head: true }).eq("command_type", "pending_approval").eq("status", "pending"),
       ]);
       return {
@@ -58,15 +59,15 @@ const Home = () => {
       const [cmds, comms, touches, ledger, fails] = await Promise.all([
         supabase.from("command_log").select("id, command_type, scope, target_key, status, executed_at, payload").gte("executed_at", cutoff).order("executed_at", { ascending: false }).limit(12),
         supabase.from("communications").select("id, channel, direction, recipient_identifier, subject, created_at").gte("created_at", cutoff).order("created_at", { ascending: false }).limit(8),
-        supabase.from("mcp_touchpoints").select("id, brand_key, channel, outcome, created_at").gte("created_at", cutoff).order("created_at", { ascending: false }).limit(8),
-        supabase.from("ledger_actions").select("id, action_type, platform, actor, revenue, created_at").gte("created_at", cutoff).order("created_at", { ascending: false }).limit(8),
+        supabase.from("mcp_touchpoints").select("touch_id, brand_key, channel, outcome, created_at").gte("created_at", cutoff).order("created_at", { ascending: false }).limit(8),
+        supabase.from("ledger_actions").select("id, action_type, platform, actor, revenue_amount, created_at").gte("created_at", cutoff).order("created_at", { ascending: false }).limit(8),
         supabase.from("failure_log").select("id, workflow_name, error_message, severity, resolved, occurred_at").gte("occurred_at", cutoff).order("occurred_at", { ascending: false }).limit(5),
       ]);
       const items: any[] = [
         ...(cmds.data || []).map((c: any) => ({ type: "cmd", label: c.command_type, detail: c.target_key || (c.payload && c.payload.brand_key) || c.scope, time: c.executed_at, color: "bg-amber-100 text-amber-700" })),
         ...(comms.data || []).map((c: any) => ({ type: "email", label: `${c.direction}: ${c.subject || c.recipient_identifier || "msg"}`, detail: c.channel, time: c.created_at, color: "bg-red-100 text-red-700" })),
         ...(touches.data || []).map((t: any) => ({ type: "touch", label: `${t.channel} → ${t.outcome || "?"}`, detail: t.brand_key, time: t.created_at, color: "bg-pink-100 text-pink-700" })),
-        ...(ledger.data || []).map((l: any) => ({ type: "ledger", label: l.action_type, detail: l.revenue ? `$${l.revenue}` : l.platform, time: l.created_at, color: "bg-green-100 text-green-700" })),
+        ...(ledger.data || []).map((l: any) => ({ type: "ledger", label: l.action_type, detail: l.revenue_amount ? `$${l.revenue_amount}` : l.platform, time: l.created_at, color: "bg-green-100 text-green-700" })),
         ...(fails.data || []).map((f: any) => ({ type: "fail", label: f.workflow_name || "error", detail: (f.error_message || "").slice(0, 50), time: f.occurred_at, color: "bg-red-200 text-red-800" })),
       ];
       return items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 30);
