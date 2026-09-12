@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import Home from "./pages/Home";
 import ExecutionDashboard from "./pages/ExecutionDashboard";
+import EnterpriseControl from "./pages/EnterpriseControl";
 import Commands from "./pages/Commands";
 import Events from "./pages/Events";
 import Outreach from "./pages/Outreach";
@@ -46,6 +47,7 @@ const App = () => (
             <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/execution" element={<ExecutionDashboard />} />
+            <Route path="/control-cycle" element={<EnterpriseControl />} />
             <Route path="/commands" element={<Commands />} />
             <Route path="/events" element={<Events />} />
             <Route path="/outreach" element={<Outreach />} />
