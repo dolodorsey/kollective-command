@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Terminal, Calendar, Send, Target, Inbox,
-  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone,
+  LayoutDashboard, Terminal, Calendar, Send, Target,
+  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone, Gauge,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -13,6 +13,7 @@ import {
 
 const MAIN_NAV = [
   { title: "HOME", url: "/", icon: LayoutDashboard },
+  { title: "EXECUTION", url: "/execution", icon: Gauge },
   { title: "COMMANDS", url: "/commands", icon: Terminal },
 ];
 
@@ -115,8 +116,8 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         {!collapsed && (
           <div className="space-y-1">
-            <p className="text-[9px] font-mono text-sidebar-foreground/25">48+ brands · 8 divisions</p>
-            <p className="text-[9px] font-mono text-sidebar-foreground/25">55 email · 45 IG · 12 AI agents</p>
+            <p className="text-[9px] font-mono text-sidebar-foreground/25">Entity-isolated execution control</p>
+            <p className="text-[9px] font-mono text-sidebar-foreground/25">Proof required before completion</p>
             {pendingCount > 0 && (
               <p className="text-[9px] font-mono text-status-warning">{pendingCount} pending approvals</p>
             )}
