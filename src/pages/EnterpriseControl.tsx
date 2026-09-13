@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { MandateReviewPanel } from "@/components/MandateReviewPanel";
 import { Activity, AlertTriangle, ExternalLink, RefreshCcw, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ function EvidenceEditor({ row, close }: { row: ControlRow; close: () => void }) 
 
 function EntityCard({ row }: { row: ControlRow }) {
   const [edit, setEdit] = useState(false);
+  const [review, setReview] = useState(false);
   const proof = safeProofUrl(row.mandate_proof_url);
   const owner = row.mandate_owner && !/^AI\s*\+/i.test(row.mandate_owner) ? row.mandate_owner : "Assignment unresolved in this mandate";
   return <article className={cn("rounded-2xl border bg-card p-5", blocked(row) ? "border-red-500/40" : "border-border/70")}>
@@ -64,7 +66,9 @@ function EntityCard({ row }: { row: ControlRow }) {
     {overdue(row.next_update_due_at) && <p className="mt-2 text-xs text-red-600">The original control-update deadline is overdue. A refreshed audit does not reset it.</p>}
     {!row.next_update_due_at && <p className="mt-2 text-xs text-muted-foreground">Control-update schedule is unknown; no human response deadline has been invented.</p>}
     <footer className="mt-4 flex flex-wrap items-center justify-between gap-3"><Link className="text-xs font-bold text-primary" to={`/brand/${encodeURIComponent(row.entity_key)}`}>Open existing entity records →</Link>{row.mandate_id && row.mandate_status !== "verified" && <button className="rounded-lg border border-border px-3 py-2 text-xs font-bold" onClick={() => setEdit(!edit)}>{edit ? "Close editor" : "Record progress / evidence"}</button>}</footer>
-    {edit && <EvidenceEditor row={row} close={() => setEdit(false)} />}
+    {edit && <EvidenceEditor key={`${row.mandate_id}:${row.mandate_last_updated_at}`} row={row} close={() => setEdit(false)} />}
+    {row.mandate_id && <button className="mt-3 text-xs font-bold text-primary underline" onClick={() => setReview(!review)}>{review ? "Close independent review" : "Open independent review"}</button>}
+    {review && <MandateReviewPanel key={`${row.mandate_id}:${row.mandate_last_updated_at}`} row={row} />}
   </article>;
 }
 
@@ -82,7 +86,7 @@ export default function EnterpriseControl() {
       <p className="mt-3 max-w-4xl text-sm leading-6 text-muted-foreground">Unresolved mandates remain visible across midnight with their original identity, owner, date and deadline. Control evidence, submitted deliverables and verified business results remain separate.</p>
       <p className="mt-2 text-xs text-muted-foreground">Feed fetched: {query.dataUpdatedAt ? time(new Date(query.dataUpdatedAt).toISOString()) : "Not yet fetched"}. This timestamp is not work or outcome evidence.</p>
     </section>
-    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs leading-5"><strong>Independent verification is not wired into this feed yet.</strong> Historical “done” and “verified” values are displayed as claims, not certified outcomes. Evidence submission cannot self-approve completion.</div>
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs leading-5"><strong>Evidence submission and independent approval are separate.</strong> Use each entity’s review panel to inspect the server-bound evidence revision and review receipt. Historical labels and heartbeat counts alone do not certify operation.</div>
     {query.error ? <div role="alert" className="rounded-xl border border-red-500/40 p-5 text-red-600"><AlertTriangle className="mb-2 h-5 w-5" />Feed unavailable or invalid; totals and cached cards withheld. {query.error.message}</div> : query.isLoading ? <p className="p-8 text-center text-muted-foreground">Loading authoritative control records…</p> : <>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["Records in scope",rows.length],["Confirmed blockers",rows.filter(blocked).length],["Unresolved carryovers",rows.filter(r => r.mandate_is_carryover).length],["No operating controls",rows.filter(r => r.operation_count === 0).length],["Original mandate overdue",rows.filter(r => overdue(r.mandate_due_at)).length]].map(([k,v]) => <div className="rounded-xl border border-border bg-card p-4" key={String(k)}><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{k}</p><p className="mt-2 text-3xl font-black">{v}</p></div>)}</section>
       <section className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-3"><label className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><input aria-label="Search entity" className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-xs" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search entity or division" /></label><select aria-label="Division" className="h-10 rounded-lg border border-border bg-background px-3 text-xs" value={division} onChange={e => setDivision(e.target.value)}><option value="all">All divisions</option>{divisions.map(d => <option key={d}>{d}</option>)}</select><select aria-label="Attention filter" className="h-10 rounded-lg border border-border bg-background px-3 text-xs" value={attention} onChange={e => setAttention(e.target.value)}><option value="all">All records</option><option value="blocked">Confirmed blockers</option><option value="carryover">Unresolved carryovers</option><option value="unknown">No operating controls</option></select></section>

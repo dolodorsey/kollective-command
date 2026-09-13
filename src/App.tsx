@@ -31,6 +31,7 @@ import OpsRevenue from "./pages/OpsRevenue";
 import OpsTasksCommand from "./pages/OpsTasksCommand";
 import NotFound from "./pages/NotFound";
 import { AuthGate } from "@/components/AuthGate";
+import { SessionQueryBoundary } from "@/components/SessionQueryBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -42,6 +43,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthGate>
+        <SessionQueryBoundary>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route element={<Layout />}>
@@ -74,6 +76,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </SessionQueryBoundary>
       </AuthGate>
     </TooltipProvider>
   </QueryClientProvider>
