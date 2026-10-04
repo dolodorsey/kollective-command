@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Terminal, Calendar, Send, Target,
-  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone, Gauge, ShieldAlert,
+  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone, Gauge, ShieldAlert, UsersRound,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -15,6 +15,7 @@ const MAIN_NAV = [
   { title: "HOME", url: "/", icon: LayoutDashboard },
   { title: "CONTROL CYCLE", url: "/control-cycle", icon: ShieldAlert },
   { title: "EXECUTION", url: "/execution", icon: Gauge },
+  { title: "DOT + MUSE", url: "/workforce", icon: UsersRound },
   { title: "COMMANDS", url: "/commands", icon: Terminal },
 ];
 
