@@ -18,6 +18,7 @@ import Social from "./pages/Social";
 import Tasks from "./pages/Tasks";
 import Outputs from "./pages/Outputs";
 import SystemHealth from "./pages/SystemHealth";
+import DigitalWorkforce from "./pages/DigitalWorkforce";
 import Settings from "./pages/Settings";
 import BrandDetail from "./pages/BrandDetail";
 import DivisionDetail from "./pages/DivisionDetail";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/outputs" element={<Outputs />} />
             <Route path="/system" element={<SystemHealth />} />
+            <Route path="/workforce" element={<DigitalWorkforce />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/ops-os" element={<OpsOSHome />} />
             <Route path="/ops-os/social" element={<OpsSocial />} />
