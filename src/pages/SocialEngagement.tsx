@@ -100,6 +100,37 @@ type LearningWeight = {
   learned_weight: number;
 };
 
+type CadenceState = {
+  entity_key: string;
+  phase: string;
+  comment_cap_day: number;
+  story_cap_day: number;
+  dm_cap_day: number;
+  total_external_cap_day: number;
+  rolling_60m_cap: number;
+  rolling_4h_cap: number;
+  min_gap_minutes: number;
+  dm_min_gap_minutes: number;
+  target_cooldown_hours: number;
+  max_target_touches_7d: number;
+  proactive_start_local: string;
+  proactive_end_local: string;
+  comments_today: number;
+  stories_today: number;
+  dms_today: number;
+  total_today: number;
+  total_60m: number;
+  total_4h: number;
+  proactive_action_allowed: boolean;
+  gate_reason: string;
+  comment_allowed: boolean;
+  story_allowed: boolean;
+  dm_allowed: boolean;
+  paused_until: string | null;
+  pause_reason: string | null;
+  next_review_at: string | null;
+};
+
 const statusLabel = (value?: string | null) => (value || "open").replaceAll("_", " ");
 
 export default function SocialEngagement() {
@@ -230,6 +261,23 @@ export default function SocialEngagement() {
     refetchInterval: 30000,
   });
 
+  const { data: cadenceRows = [] } = useQuery({
+    queryKey: ["social-engagement-cadence", program?.entity_key],
+    enabled: Boolean(program?.entity_key),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_social_engagement_cadence_state_v1")
+        .select("*")
+        .eq("entity_key", program!.entity_key)
+        .limit(1);
+      if (error) throw error;
+      return (data || []) as CadenceState[];
+    },
+    refetchInterval: 15000,
+  });
+
+  const cadence = cadenceRows[0] || null;
+
   const visible = useMemo(
     () =>
       actions.filter((action) => {
@@ -246,6 +294,7 @@ export default function SocialEngagement() {
     qc.invalidateQueries({ queryKey: ["social-engagement-learning"] });
     qc.invalidateQueries({ queryKey: ["dorsey-engagement-content-feedback"] });
     qc.invalidateQueries({ queryKey: ["dorsey-engagement-team-queue"] });
+    qc.invalidateQueries({ queryKey: ["social-engagement-cadence"] });
   };
 
   async function saveDraft(action: EngagementAction) {
@@ -271,6 +320,21 @@ export default function SocialEngagement() {
   }
 
   async function setStatus(action: EngagementAction, status: string) {
+    if (status === "executed" && cadence) {
+      const specificAllowed =
+        action.action_type === "comment"
+          ? cadence.comment_allowed
+          : ["story_reply", "story_reaction"].includes(action.action_type)
+            ? cadence.story_allowed
+            : action.action_type === "dm"
+              ? cadence.dm_allowed
+              : cadence.proactive_action_allowed;
+
+      if (!specificAllowed) {
+        return toast.error(`Cadence blocked: ${statusLabel(cadence.gate_reason)}. Keep internal research/QA moving and wait for the gate to reopen.`);
+      }
+    }
+
     const patch: Record<string, any> = { status, updated_at: new Date().toISOString() };
     if (status === "executed") patch.executed_at = new Date().toISOString();
     if (status === "replied") patch.replied_at = new Date().toISOString();
@@ -397,6 +461,8 @@ export default function SocialEngagement() {
     return acc;
   }, {});
   const proofBackedPillars = contentFeedback.filter((row: any) => Number(row.executions || 0) > 0).length;
+  const cadencePhase = cadence?.phase || "not configured";
+  const cadenceGate = cadence?.proactive_action_allowed ? "OPEN" : "HOLD";
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -443,6 +509,33 @@ export default function SocialEngagement() {
         <Metric title="Claude Queue" value={Number(teamCounts.claude || 0).toLocaleString()} note="Secondary QA when available" />
         <Metric title="Proof-Backed Pillars" value={proofBackedPillars.toLocaleString()} note="Content pillars with real execution evidence" />
       </div>
+
+      {cadence && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">Safe Cadence Gate</CardTitle>
+              <div className="flex gap-2">
+                <Badge variant={cadence.proactive_action_allowed ? "secondary" : "outline"}>{statusLabel(cadence.phase)}</Badge>
+                <Badge variant={cadence.proactive_action_allowed ? "secondary" : "outline"}>{cadenceGate}</Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+            <div><span className="text-muted-foreground">Comments</span><p className="font-semibold">{cadence.comments_today}/{cadence.comment_cap_day} today</p></div>
+            <div><span className="text-muted-foreground">Stories</span><p className="font-semibold">{cadence.stories_today}/{cadence.story_cap_day} today</p></div>
+            <div><span className="text-muted-foreground">DMs</span><p className="font-semibold">{cadence.dms_today}/{cadence.dm_cap_day} today</p></div>
+            <div><span className="text-muted-foreground">External Total</span><p className="font-semibold">{cadence.total_today}/{cadence.total_external_cap_day} today</p></div>
+            <div><span className="text-muted-foreground">Rolling 60m</span><p className="font-semibold">{cadence.total_60m}/{cadence.rolling_60m_cap}</p></div>
+            <div><span className="text-muted-foreground">Rolling 4h</span><p className="font-semibold">{cadence.total_4h}/{cadence.rolling_4h_cap}</p></div>
+            <div><span className="text-muted-foreground">Minimum Gap</span><p className="font-semibold">{cadence.min_gap_minutes} min · DM {cadence.dm_min_gap_minutes} min</p></div>
+            <div><span className="text-muted-foreground">Gate Reason</span><p className="font-semibold">{statusLabel(cadence.gate_reason)}</p></div>
+            <p className="md:col-span-2 xl:col-span-4 text-xs text-muted-foreground">
+              Conservative internal safety policy, not an official Instagram limit. High-volume scoring and research continue even when proactive external engagement is held. No bursting, no rate-limit evasion, no cold mass DMs.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-3 lg:grid-cols-3">
         <Card>
