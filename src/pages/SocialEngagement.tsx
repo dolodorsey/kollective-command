@@ -75,6 +75,17 @@ type VoicePattern = {
   max_words: number;
 };
 
+type ActionMenuItem = {
+  id: string;
+  action_key: string;
+  trigger_rule: string;
+  action_type: string;
+  priority: number;
+  approval_required: boolean;
+  notes: string | null;
+  metadata: Record<string, any>;
+};
+
 type LearningWeight = {
   entity_key: string;
   context_key: string;
@@ -139,6 +150,21 @@ export default function SocialEngagement() {
         .order("context_key");
       if (error) throw error;
       return (data || []) as VoicePattern[];
+    },
+  });
+
+  const { data: actionMenu = [] } = useQuery({
+    queryKey: ["social-engagement-action-menu", program?.entity_key],
+    enabled: Boolean(program?.entity_key),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("social_engagement_action_menu")
+        .select("id,action_key,trigger_rule,action_type,priority,approval_required,notes,metadata")
+        .eq("entity_key", program!.entity_key)
+        .eq("active", true)
+        .order("priority", { ascending: false });
+      if (error) throw error;
+      return (data || []) as ActionMenuItem[];
     },
   });
 
@@ -219,6 +245,34 @@ export default function SocialEngagement() {
     const { error } = await supabase.from("social_engagement_actions").update(patch).eq("id", action.id);
     if (error) return toast.error(error.message);
     toast.success(`Marked ${statusLabel(status)}`);
+    refresh();
+  }
+
+  async function setActionChoice(action: EngagementAction, actionKey: string) {
+    const choice = actionMenu.find((item) => item.action_key === actionKey);
+    if (!choice) return;
+    const nextStatus =
+      actionKey === "do_nothing" || actionKey === "research_only" ? "skipped" : "needs_context";
+    const { error } = await supabase
+      .from("social_engagement_actions")
+      .update({
+        action_type: choice.action_type,
+        status: nextStatus,
+        approval_required: choice.approval_required,
+        context_key: null,
+        voice_mode: null,
+        draft_text: null,
+        metadata: {
+          ...(action.metadata || {}),
+          chosen_action_key: choice.action_key,
+          chosen_action_rule: choice.trigger_rule,
+          chosen_action_notes: choice.notes,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", action.id);
+    if (error) return toast.error(error.message);
+    toast.success(nextStatus === "skipped" ? "No-action decision recorded" : `Action set to ${statusLabel(choice.action_key)}`);
     refresh();
   }
 
@@ -430,6 +484,8 @@ export default function SocialEngagement() {
                 draft={drafts[action.id] ?? action.draft_text ?? ""}
                 onDraft={(value) => setDrafts((prev) => ({ ...prev, [action.id]: value }))}
                 patterns={voicePatterns.filter((pattern) => pattern.action_type === action.action_type)}
+                actionMenu={actionMenu}
+                onActionChoice={(value) => setActionChoice(action, value)}
                 onPattern={(value) => setPattern(action, value)}
                 onSave={() => saveDraft(action)}
                 onStatus={(status) => setStatus(action, status)}
@@ -461,6 +517,8 @@ function EngagementCard({
   draft,
   onDraft,
   patterns,
+  actionMenu,
+  onActionChoice,
   onPattern,
   onSave,
   onStatus,
@@ -471,6 +529,8 @@ function EngagementCard({
   draft: string;
   onDraft: (value: string) => void;
   patterns: VoicePattern[];
+  actionMenu: ActionMenuItem[];
+  onActionChoice: (value: string) => void;
   onPattern: (value: string) => void;
   onSave: () => void;
   onStatus: (status: string) => void;
@@ -525,36 +585,62 @@ function EngagementCard({
 
       <div className="mt-3 space-y-2">
         <Select
-          value={action.context_key && action.voice_mode ? `${action.context_key}|${action.voice_mode}` : undefined}
-          onValueChange={onPattern}
+          value={action.metadata?.chosen_action_key || undefined}
+          onValueChange={onActionChoice}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Choose live context + Dorsey voice mode" />
+            <SelectValue placeholder="Choose what Dolo should actually do" />
           </SelectTrigger>
           <SelectContent>
-            {patterns.map((pattern) => (
-              <SelectItem key={pattern.id} value={`${pattern.context_key}|${pattern.voice_mode}`}>
-                {statusLabel(pattern.context_key)} · {statusLabel(pattern.voice_mode)}
+            {actionMenu.map((item) => (
+              <SelectItem key={item.id} value={item.action_key}>
+                {statusLabel(item.action_key)} · {statusLabel(item.action_type)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Textarea
-          value={draft}
-          onChange={(e) => onDraft(e.target.value)}
-          placeholder={
-            action.action_type === "dm"
-              ? "Write the contextual manual-approval DM..."
-              : "After reviewing the live post, write one specific, natural comment..."
-          }
-          className="min-h-[84px]"
-        />
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-[10px] text-muted-foreground">
-            {action.metadata?.instruction || "Context first. Quality over volume."}
+
+        {["comment", "dm", "story_reply"].includes(action.action_type) ? (
+          <>
+            <Select
+              value={action.context_key && action.voice_mode ? `${action.context_key}|${action.voice_mode}` : undefined}
+              onValueChange={onPattern}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose live context + Dorsey voice mode" />
+              </SelectTrigger>
+              <SelectContent>
+                {patterns.map((pattern) => (
+                  <SelectItem key={pattern.id} value={`${pattern.context_key}|${pattern.voice_mode}`}>
+                    {statusLabel(pattern.context_key)} · {statusLabel(pattern.voice_mode)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Textarea
+              value={draft}
+              onChange={(e) => onDraft(e.target.value)}
+              placeholder={
+                action.action_type === "dm"
+                  ? "Write the contextual manual-approval DM..."
+                  : action.action_type === "story_reply"
+                    ? "Write one specific Story reply..."
+                    : "After reviewing the live post, write one specific, natural comment..."
+              }
+              className="min-h-[84px]"
+            />
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="text-[10px] text-muted-foreground">
+                {action.metadata?.instruction || "Context first. Quality over volume."}
+              </p>
+              <Button size="sm" onClick={onSave}>Save Copy</Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {action.metadata?.chosen_action_notes || "Review the live context, then choose the lightest genuine action. A no-action decision is valid."}
           </p>
-          <Button size="sm" onClick={onSave}>Save Copy</Button>
-        </div>
+        )}
       </div>
     </div>
   );
