@@ -24,6 +24,7 @@ import BrandDetail from "./pages/BrandDetail";
 import DivisionDetail from "./pages/DivisionDetail";
 import OpsOSHome from "./pages/OpsOSHome";
 import OpsSocial from "./pages/OpsSocial";
+import SocialEngagement from "./pages/SocialEngagement";
 import OpsMarketing from "./pages/OpsMarketing";
 import OpsApprovals from "./pages/OpsApprovals";
 import OpsContentStudio from "./pages/OpsContentStudio";
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/ops-os" element={<OpsOSHome />} />
             <Route path="/ops-os/social" element={<OpsSocial />} />
+            <Route path="/ops-os/engagement" element={<SocialEngagement />} />
             <Route path="/ops-os/marketing" element={<OpsMarketing />} />
             <Route path="/ops-os/approvals" element={<OpsApprovals />} />
             <Route path="/ops-os/content-studio" element={<OpsContentStudio />} />
