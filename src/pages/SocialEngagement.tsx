@@ -202,6 +202,34 @@ export default function SocialEngagement() {
     refetchInterval: 30000,
   });
 
+  const { data: contentFeedback = [] } = useQuery({
+    queryKey: ["dorsey-engagement-content-feedback", program?.entity_key],
+    enabled: program?.entity_key === "dr-dorsey",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_dorsey_engagement_content_feedback_v1")
+        .select("*")
+        .order("avg_learned_weight", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: teamQueue = [] } = useQuery({
+    queryKey: ["dorsey-engagement-team-queue", program?.entity_key],
+    enabled: program?.entity_key === "dr-dorsey",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_social_engagement_team_queue_v1")
+        .select("research_owner,qa_owner,status")
+        .eq("entity_key", "dr-dorsey");
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
   const visible = useMemo(
     () =>
       actions.filter((action) => {
@@ -216,6 +244,8 @@ export default function SocialEngagement() {
     qc.invalidateQueries({ queryKey: ["social-engagement-actions"] });
     qc.invalidateQueries({ queryKey: ["social-engagement-similarity-flags"] });
     qc.invalidateQueries({ queryKey: ["social-engagement-learning"] });
+    qc.invalidateQueries({ queryKey: ["dorsey-engagement-content-feedback"] });
+    qc.invalidateQueries({ queryKey: ["dorsey-engagement-team-queue"] });
   };
 
   async function saveDraft(action: EngagementAction) {
@@ -361,6 +391,12 @@ export default function SocialEngagement() {
   const learningSignals = learningWeights.reduce((sum, row) => sum + Number(row.replies || 0) + Number(row.dm_replies || 0) + Number(row.follows || 0) + Number(row.conversions || 0), 0);
   const blockedCopyCount = similarityFlags.filter((row: any) => row.copy_qa_status === "blocked").length;
   const reviewCopyCount = similarityFlags.filter((row: any) => row.copy_qa_status === "review").length;
+  const teamCounts = teamQueue.reduce((acc: Record<string, number>, row: any) => {
+    const key = row.research_owner || "unassigned";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const proofBackedPillars = contentFeedback.filter((row: any) => Number(row.executions || 0) > 0).length;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -401,6 +437,11 @@ export default function SocialEngagement() {
         <Metric title="Action Options" value={actionOptionCount.toLocaleString()} note="Comment / Story / DM / no-action choices" />
         <Metric title="Copy QA Flags" value={similarityFlags.length.toLocaleString()} note={`${blockedCopyCount} blocked · ${reviewCopyCount} review`} />
         <Metric title="Learning Signals" value={learningSignals.toLocaleString()} note="Replies + DM replies + follows + conversions" />
+        <Metric title="Muse Queue" value={Number(teamCounts.muse || 0).toLocaleString()} note="Primary live-context lane" />
+        <Metric title="ChatGPT Queue" value={Number(teamCounts.chatgpt || 0).toLocaleString()} note="Public-context / strategy / QA" />
+        <Metric title="Dot Queue" value={Number(teamCounts.dot || 0).toLocaleString()} note="Scoring / proof / control" />
+        <Metric title="Claude Queue" value={Number(teamCounts.claude || 0).toLocaleString()} note="Secondary QA when available" />
+        <Metric title="Proof-Backed Pillars" value={proofBackedPillars.toLocaleString()} note="Content pillars with real execution evidence" />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
@@ -458,6 +499,30 @@ export default function SocialEngagement() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Dorsey Content Feedback</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {contentFeedback.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No engagement-to-content feedback rows yet.</p>
+          ) : (
+            contentFeedback.map((row: any) => (
+              <div key={row.content_pillar} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+                <div>
+                  <strong className="text-xs">{statusLabel(row.content_pillar)}</strong>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {Number(row.executions || 0)} executions · {Number(row.replies || 0)} replies · {Number(row.follows || 0)} follows · {Number(row.conversions || 0)} conversions
+                  </p>
+                </div>
+                <Badge variant={Number(row.executions || 0) > 0 ? "secondary" : "outline"}>
+                  {Number(row.executions || 0) > 0 ? `weight ×${Number(row.avg_learned_weight || 1).toFixed(2)}` : "hypothesis only"}
+                </Badge>
+              </div>
+            ))
+          )}
+          <p className="text-[10px] text-muted-foreground">Do not scale a Dorsey content pillar from audience overlap alone. Promotion to winner status requires provider-backed executions and response evidence.</p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="space-y-3">
