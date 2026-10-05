@@ -18,6 +18,7 @@ import Social from "./pages/Social";
 import Tasks from "./pages/Tasks";
 import Outputs from "./pages/Outputs";
 import SystemHealth from "./pages/SystemHealth";
+import DigitalWorkforce from "./pages/DigitalWorkforce";
 import Settings from "./pages/Settings";
 import BrandDetail from "./pages/BrandDetail";
 import DivisionDetail from "./pages/DivisionDetail";
@@ -31,6 +32,7 @@ import OpsRevenue from "./pages/OpsRevenue";
 import OpsTasksCommand from "./pages/OpsTasksCommand";
 import NotFound from "./pages/NotFound";
 import { AuthGate } from "@/components/AuthGate";
+import { SessionQueryBoundary } from "@/components/SessionQueryBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -42,6 +44,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthGate>
+        <SessionQueryBoundary>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route element={<Layout />}>
@@ -59,6 +62,7 @@ const App = () => (
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/outputs" element={<Outputs />} />
             <Route path="/system" element={<SystemHealth />} />
+            <Route path="/workforce" element={<DigitalWorkforce />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/ops-os" element={<OpsOSHome />} />
             <Route path="/ops-os/social" element={<OpsSocial />} />
@@ -74,6 +78,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </SessionQueryBoundary>
       </AuthGate>
     </TooltipProvider>
   </QueryClientProvider>
