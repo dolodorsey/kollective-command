@@ -123,34 +123,6 @@ type CadenceState = {
   total_4h: number;
   proactive_action_allowed: boolean;
   gate_reason: string;
-  next_review_at: string | null;
-  paused_until: string | null;
-  pause_reason: string | null;
-};
-
-type CadenceState = {
-  entity_key: string;
-  phase: string;
-  comment_cap_day: number;
-  story_cap_day: number;
-  dm_cap_day: number;
-  total_external_cap_day: number;
-  rolling_60m_cap: number;
-  rolling_4h_cap: number;
-  min_gap_minutes: number;
-  dm_min_gap_minutes: number;
-  target_cooldown_hours: number;
-  max_target_touches_7d: number;
-  proactive_start_local: string;
-  proactive_end_local: string;
-  comments_today: number;
-  stories_today: number;
-  dms_today: number;
-  total_today: number;
-  total_60m: number;
-  total_4h: number;
-  proactive_action_allowed: boolean;
-  gate_reason: string;
   comment_allowed: boolean;
   story_allowed: boolean;
   dm_allowed: boolean;
@@ -305,21 +277,6 @@ export default function SocialEngagement() {
   });
 
   const cadence = cadenceRows[0] || null;
-
-  const { data: cadence = null } = useQuery({
-    queryKey: ["social-engagement-cadence", program?.entity_key],
-    enabled: Boolean(program?.entity_key),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_social_engagement_cadence_state_v1")
-        .select("*")
-        .eq("entity_key", program!.entity_key)
-        .maybeSingle();
-      if (error) throw error;
-      return (data || null) as CadenceState | null;
-    },
-    refetchInterval: 30000,
-  });
 
   const visible = useMemo(
     () =>
@@ -576,30 +533,6 @@ export default function SocialEngagement() {
             <p className="md:col-span-2 xl:col-span-4 text-xs text-muted-foreground">
               Conservative internal safety policy, not an official Instagram limit. High-volume scoring and research continue even when proactive external engagement is held. No bursting, no rate-limit evasion, no cold mass DMs.
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {cadence && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Safe External Cadence</CardTitle></CardHeader>
-          <CardContent className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-            <div><span className="text-muted-foreground">Today</span><p className="font-semibold">{cadence.total_today}/{cadence.total_external_cap_day} total</p></div>
-            <div><span className="text-muted-foreground">Comments</span><p className="font-semibold">{cadence.comments_today}/{cadence.comment_cap_day}</p></div>
-            <div><span className="text-muted-foreground">Stories</span><p className="font-semibold">{cadence.stories_today}/{cadence.story_cap_day}</p></div>
-            <div><span className="text-muted-foreground">DMs</span><p className="font-semibold">{cadence.dms_today}/{cadence.dm_cap_day}</p></div>
-            <div><span className="text-muted-foreground">Rolling 60m</span><p className="font-semibold">{cadence.total_60m}/{cadence.rolling_60m_cap}</p></div>
-            <div><span className="text-muted-foreground">Rolling 4h</span><p className="font-semibold">{cadence.total_4h}/{cadence.rolling_4h_cap}</p></div>
-            <div><span className="text-muted-foreground">Min gap</span><p className="font-semibold">{cadence.min_gap_minutes} min</p></div>
-            <div><span className="text-muted-foreground">Target cooldown</span><p className="font-semibold">{cadence.target_cooldown_hours}h</p></div>
-            <div className="md:col-span-2 xl:col-span-4">
-              <Badge variant={cadence.proactive_action_allowed ? "secondary" : "outline"}>
-                {cadence.proactive_action_allowed ? "Proactive engagement allowed" : `Held: ${statusLabel(cadence.gate_reason)}`}
-              </Badge>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Internal scoring can continue at high volume. External actions stay inside the live cadence gate and automatically back off on provider warnings or action blocks.
-              </p>
-            </div>
           </CardContent>
         </Card>
       )}
