@@ -73,6 +73,7 @@ type VoicePattern = {
   action_type: string;
   intent: string;
   max_words: number;
+  learned_weight?: number;
 };
 
 type ActionMenuItem = {
@@ -127,9 +128,10 @@ export default function SocialEngagement() {
     enabled: Boolean(program?.enterprise_entity_id),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("social_engagement_actions")
+        .from("v_social_engagement_queue_v1")
         .select("*")
         .eq("enterprise_entity_id", program!.enterprise_entity_id)
+        .order("target_priority", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(2000);
       if (error) throw error;
@@ -143,10 +145,10 @@ export default function SocialEngagement() {
     enabled: Boolean(program?.entity_key),
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("social_engagement_voice_patterns")
-        .select("id,context_key,voice_mode,action_type,intent,max_words")
+        .from("v_social_engagement_pattern_rank_v1")
+        .select("id,context_key,voice_mode,action_type,intent,max_words,learned_weight")
         .eq("entity_key", program!.entity_key)
-        .eq("active", true)
+        .order("learned_weight", { ascending: false })
         .order("context_key");
       if (error) throw error;
       return (data || []) as VoicePattern[];
@@ -612,7 +614,7 @@ function EngagementCard({
               <SelectContent>
                 {patterns.map((pattern) => (
                   <SelectItem key={pattern.id} value={`${pattern.context_key}|${pattern.voice_mode}`}>
-                    {statusLabel(pattern.context_key)} · {statusLabel(pattern.voice_mode)}
+                    {statusLabel(pattern.context_key)} · {statusLabel(pattern.voice_mode)}{Number(pattern.learned_weight || 1) > 1 ? ` · ×${Number(pattern.learned_weight).toFixed(1)}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
