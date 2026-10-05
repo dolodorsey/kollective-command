@@ -92,7 +92,7 @@ export default function SocialEngagement() {
         .select("*")
         .eq("enterprise_entity_id", program!.enterprise_entity_id)
         .order("created_at", { ascending: true })
-        .limit(500);
+        .limit(2000);
       if (error) throw error;
       return (data || []) as EngagementAction[];
     },
@@ -176,10 +176,13 @@ export default function SocialEngagement() {
     );
   }
 
-  const blocks = Array.from({ length: Math.max(1, Math.ceil(program.target_cycle_size / program.daily_target_count)) }, (_, i) => i + 1);
+  const viewBatches = Array.from(new Set(actions.map((action) => Number(action.metadata?.daily_block || 1)))).sort((a, b) => a - b);
   const sourcePool = Number(program.metadata?.source_pool_size || 0);
   const warmPool = Number(program.metadata?.warm_2plus_pool || 0);
   const superfanPool = Number(program.metadata?.superfan_pool || 0);
+  const scanTarget = Number(program.metadata?.background_scan_target_daily || 0);
+  const contextTarget = Number(program.metadata?.context_review_target_daily || 0);
+  const touchCandidateTarget = Number(program.metadata?.direct_touch_candidate_target_daily || 0);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -206,10 +209,13 @@ export default function SocialEngagement() {
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-3">
         <Metric title="Warm Pool" value={sourcePool.toLocaleString()} note="Addressable audience" />
         <Metric title="Multi-Signal" value={warmPool.toLocaleString()} note="2+ source signals" />
         <Metric title="Superfans" value={superfanPool.toLocaleString()} note="Highest confidence" />
+        <Metric title="Background Scan / Day" value={scanTarget.toLocaleString()} note="Score + segment at data speed" />
+        <Metric title="Context Review / Day" value={contextTarget.toLocaleString()} note="Highest-value accounts" />
+        <Metric title="Touch Candidates / Day" value={touchCandidateTarget.toLocaleString()} note="Qualified for real engagement" />
         <Metric title="Open Queue" value={Number(program.open_actions).toLocaleString()} note="Needs work" />
         <Metric title="Replies Today" value={Number(program.replies_today).toLocaleString()} note="Relationship signal" />
         <Metric title="Conversions Today" value={Number(program.conversions_today).toLocaleString()} note="Follow / lead / partner" />
@@ -249,13 +255,13 @@ export default function SocialEngagement() {
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle>100-Shot Engagement Cycle</CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">20 accounts per research block. Comments first; DM only after a real signal.</p>
+              <CardTitle>Continuous Engagement Queue</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">These 20-row views are dashboard pagination only — not a daily limit. The background team processes the full priority queue continuously; all current 100 targets can advance in the same day.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {blocks.map((n) => (
+              {(viewBatches.length ? viewBatches : [1]).map((n) => (
                 <Button key={n} size="sm" variant={block === n ? "default" : "outline"} onClick={() => setBlock(n)}>
-                  Block {n}
+                  View {n}
                 </Button>
               ))}
             </div>
@@ -263,7 +269,7 @@ export default function SocialEngagement() {
         </CardHeader>
         <CardContent className="space-y-3">
           {visible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No actions in this block.</p>
+            <p className="text-sm text-muted-foreground">No actions in this view.</p>
           ) : (
             visible.map((action) => (
               <EngagementCard
