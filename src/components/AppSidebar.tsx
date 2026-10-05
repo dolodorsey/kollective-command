@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Terminal, Calendar, Send, Target,
-  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone, Gauge, ShieldAlert, UsersRound,
+  Share2, CheckSquare, FileOutput, Activity, Settings, Mail, Instagram, Phone, Gauge, ShieldAlert, UsersRound, MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -28,6 +28,7 @@ const COMMS_NAV = [
 const OPS_OS_NAV = [
   { title: "OPS HOME", url: "/ops-os", icon: LayoutDashboard },
   { title: "OPS SOCIAL", url: "/ops-os/social", icon: Share2 },
+  { title: "ENGAGEMENT", url: "/ops-os/engagement", icon: MessageCircle },
   { title: "MARKETING", url: "/ops-os/marketing", icon: Send },
   { title: "APPROVALS", url: "/ops-os/approvals", icon: CheckSquare },
   { title: "CONTENT STUDIO", url: "/ops-os/content-studio", icon: FileOutput },
