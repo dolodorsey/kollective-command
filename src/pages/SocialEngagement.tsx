@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 type Program = {
@@ -58,6 +59,33 @@ type EngagementAction = {
   owner_label: string | null;
   metadata: Record<string, any>;
   created_at: string;
+  context_key: string | null;
+  voice_mode: string | null;
+  copy_qa_status: string;
+  copy_similarity_max: number | null;
+  copy_qa_flags: Record<string, any>;
+};
+
+type VoicePattern = {
+  id: string;
+  context_key: string;
+  voice_mode: string;
+  action_type: string;
+  intent: string;
+  max_words: number;
+};
+
+type LearningWeight = {
+  entity_key: string;
+  context_key: string;
+  voice_mode: string;
+  action_type: string;
+  executions: number;
+  replies: number;
+  dm_replies: number;
+  follows: number;
+  conversions: number;
+  learned_weight: number;
 };
 
 const statusLabel = (value?: string | null) => (value || "open").replaceAll("_", " ");
@@ -99,6 +127,53 @@ export default function SocialEngagement() {
     refetchInterval: 30000,
   });
 
+  const { data: voicePatterns = [] } = useQuery({
+    queryKey: ["social-engagement-voice-patterns", program?.entity_key],
+    enabled: Boolean(program?.entity_key),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("social_engagement_voice_patterns")
+        .select("id,context_key,voice_mode,action_type,intent,max_words")
+        .eq("entity_key", program!.entity_key)
+        .eq("active", true)
+        .order("context_key");
+      if (error) throw error;
+      return (data || []) as VoicePattern[];
+    },
+  });
+
+  const { data: similarityFlags = [] } = useQuery({
+    queryKey: ["social-engagement-similarity-flags", program?.entity_key],
+    enabled: Boolean(program?.entity_key),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_social_engagement_similarity_guard_v2")
+        .select("*")
+        .eq("entity_key", program!.entity_key)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: learningWeights = [] } = useQuery({
+    queryKey: ["social-engagement-learning", program?.entity_key],
+    enabled: Boolean(program?.entity_key),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_social_engagement_learning_weights_v1")
+        .select("*")
+        .eq("entity_key", program!.entity_key)
+        .order("learned_weight", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data || []) as LearningWeight[];
+    },
+    refetchInterval: 30000,
+  });
+
   const visible = useMemo(
     () =>
       actions.filter((action) => {
@@ -111,18 +186,29 @@ export default function SocialEngagement() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["social-engagement-programs"] });
     qc.invalidateQueries({ queryKey: ["social-engagement-actions"] });
+    qc.invalidateQueries({ queryKey: ["social-engagement-similarity-flags"] });
+    qc.invalidateQueries({ queryKey: ["social-engagement-learning"] });
   };
 
   async function saveDraft(action: EngagementAction) {
     const text = (drafts[action.id] ?? action.draft_text ?? "").trim();
     if (!text) return toast.error("Add the exact comment or DM copy first.");
+    if (!action.context_key || !action.voice_mode) return toast.error("Choose the context + voice pattern first.");
     const nextStatus = action.action_type === "dm" || action.approval_required ? "needs_approval" : "drafted";
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("social_engagement_actions")
       .update({ draft_text: text, status: nextStatus, updated_at: new Date().toISOString() })
-      .eq("id", action.id);
+      .eq("id", action.id)
+      .select("copy_qa_status,copy_similarity_max,status")
+      .single();
     if (error) return toast.error(error.message);
-    toast.success("Engagement copy saved");
+    if (data?.copy_qa_status === "blocked") {
+      toast.error("Too similar to recent Dorsey copy. Kept in context/redraft queue.");
+    } else if (data?.copy_qa_status === "review") {
+      toast.warning("Saved, but variation QA flagged this draft for review.");
+    } else {
+      toast.success("Engagement copy passed variation QA");
+    }
     refresh();
   }
 
@@ -133,6 +219,37 @@ export default function SocialEngagement() {
     const { error } = await supabase.from("social_engagement_actions").update(patch).eq("id", action.id);
     if (error) return toast.error(error.message);
     toast.success(`Marked ${statusLabel(status)}`);
+    refresh();
+  }
+
+  async function setPattern(action: EngagementAction, patternValue: string) {
+    const pattern = voicePatterns.find((p) => `${p.context_key}|${p.voice_mode}` === patternValue);
+    if (!pattern) return;
+    const { error } = await supabase
+      .from("social_engagement_actions")
+      .update({
+        context_key: pattern.context_key,
+        voice_mode: pattern.voice_mode,
+        metadata: { ...(action.metadata || {}), voice_intent: pattern.intent, max_words: pattern.max_words },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", action.id);
+    if (error) return toast.error(error.message);
+    toast.success("Context + voice locked");
+    refresh();
+  }
+
+  async function setConversion(action: EngagementAction, conversionType: string) {
+    const { error } = await supabase
+      .from("social_engagement_actions")
+      .update({
+        status: "converted",
+        conversion_type: conversionType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", action.id);
+    if (error) return toast.error(error.message);
+    toast.success(`Recorded ${statusLabel(conversionType)} conversion`);
     refresh();
   }
 
@@ -183,6 +300,11 @@ export default function SocialEngagement() {
   const scanTarget = Number(program.metadata?.background_scan_target_daily || 0);
   const contextTarget = Number(program.metadata?.context_review_target_daily || 0);
   const touchCandidateTarget = Number(program.metadata?.direct_touch_candidate_target_daily || 0);
+  const voicePatternCount = Number(program.metadata?.engagement_voice_patterns || voicePatterns.length || 0);
+  const actionOptionCount = Number(program.metadata?.engagement_action_options || 0);
+  const learningSignals = learningWeights.reduce((sum, row) => sum + Number(row.replies || 0) + Number(row.dm_replies || 0) + Number(row.follows || 0) + Number(row.conversions || 0), 0);
+  const blockedCopyCount = similarityFlags.filter((row: any) => row.copy_qa_status === "blocked").length;
+  const reviewCopyCount = similarityFlags.filter((row: any) => row.copy_qa_status === "review").length;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -219,6 +341,10 @@ export default function SocialEngagement() {
         <Metric title="Open Queue" value={Number(program.open_actions).toLocaleString()} note="Needs work" />
         <Metric title="Replies Today" value={Number(program.replies_today).toLocaleString()} note="Relationship signal" />
         <Metric title="Conversions Today" value={Number(program.conversions_today).toLocaleString()} note="Follow / lead / partner" />
+        <Metric title="Voice Patterns" value={voicePatternCount.toLocaleString()} note="Dorsey-specific context + tone modes" />
+        <Metric title="Action Options" value={actionOptionCount.toLocaleString()} note="Comment / Story / DM / no-action choices" />
+        <Metric title="Copy QA Flags" value={similarityFlags.length.toLocaleString()} note={`${blockedCopyCount} blocked · ${reviewCopyCount} review`} />
+        <Metric title="Learning Signals" value={learningSignals.toLocaleString()} note="Replies + DM replies + follows + conversions" />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
@@ -251,6 +377,32 @@ export default function SocialEngagement() {
         </Card>
       </div>
 
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Copy Variation QA</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between"><span>Blocked recent copy</span><strong>{blockedCopyCount}</strong></div>
+            <div className="flex justify-between"><span>Review required</span><strong>{reviewCopyCount}</strong></div>
+            <p className="text-xs text-muted-foreground">Exact-copy fingerprints, token overlap, and repeated sentence structure are checked before engagement copy advances.</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Learning Leaderboard</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {learningWeights.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No provider-backed response learning yet. The system will rank context + voice + action combinations as replies, follows and conversions arrive.</p>
+            ) : (
+              learningWeights.slice(0, 5).map((row) => (
+                <div key={`${row.context_key}|${row.voice_mode}|${row.action_type}`} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="truncate">{statusLabel(row.context_key)} · {statusLabel(row.voice_mode)} · {row.action_type}</span>
+                  <Badge variant="secondary">×{Number(row.learned_weight).toFixed(2)}</Badge>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -277,9 +429,12 @@ export default function SocialEngagement() {
                 action={action}
                 draft={drafts[action.id] ?? action.draft_text ?? ""}
                 onDraft={(value) => setDrafts((prev) => ({ ...prev, [action.id]: value }))}
+                patterns={voicePatterns.filter((pattern) => pattern.action_type === action.action_type)}
+                onPattern={(value) => setPattern(action, value)}
                 onSave={() => saveDraft(action)}
                 onStatus={(status) => setStatus(action, status)}
                 onQueueDm={() => queueDm(action)}
+                onConversion={(conversionType) => setConversion(action, conversionType)}
               />
             ))
           )}
@@ -305,16 +460,22 @@ function EngagementCard({
   action,
   draft,
   onDraft,
+  patterns,
+  onPattern,
   onSave,
   onStatus,
   onQueueDm,
+  onConversion,
 }: {
   action: EngagementAction;
   draft: string;
   onDraft: (value: string) => void;
+  patterns: VoicePattern[];
+  onPattern: (value: string) => void;
   onSave: () => void;
   onStatus: (status: string) => void;
   onQueueDm: () => void;
+  onConversion: (conversionType: string) => void;
 }) {
   return (
     <div className="rounded-lg border bg-card p-4">
@@ -325,6 +486,13 @@ function EngagementCard({
             <Badge variant="outline">{action.action_type}</Badge>
             <Badge variant="secondary">{statusLabel(action.status)}</Badge>
             {action.approval_required && <Badge>approval required</Badge>}
+            {action.context_key && <Badge variant="outline">{statusLabel(action.context_key)}</Badge>}
+            {action.voice_mode && <Badge variant="outline">{statusLabel(action.voice_mode)}</Badge>}
+            {action.copy_qa_status && action.copy_qa_status !== "pending" && (
+              <Badge variant={action.copy_qa_status === "blocked" ? "destructive" : "secondary"}>
+                copy QA: {action.copy_qa_status}
+              </Badge>
+            )}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
             Wave {action.metadata?.wave || "engagement"} · #{action.metadata?.sequence_in_wave || "—"}
@@ -347,12 +515,30 @@ function EngagementCard({
             <Button size="sm" variant="outline" onClick={() => onStatus("replied")}>Reply Received</Button>
           )}
           {["executed", "replied"].includes(action.status) && (
-            <Button size="sm" variant="outline" onClick={() => onStatus("converted")}>Mark Converted</Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => onConversion("follow")}>Mark Follow</Button>
+              <Button size="sm" variant="outline" onClick={() => onConversion("qualified_relationship")}>Mark Converted</Button>
+            </>
           )}
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 space-y-2">
+        <Select
+          value={action.context_key && action.voice_mode ? `${action.context_key}|${action.voice_mode}` : undefined}
+          onValueChange={onPattern}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose live context + Dorsey voice mode" />
+          </SelectTrigger>
+          <SelectContent>
+            {patterns.map((pattern) => (
+              <SelectItem key={pattern.id} value={`${pattern.context_key}|${pattern.voice_mode}`}>
+                {statusLabel(pattern.context_key)} · {statusLabel(pattern.voice_mode)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Textarea
           value={draft}
           onChange={(e) => onDraft(e.target.value)}
