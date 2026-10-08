@@ -16,7 +16,6 @@ const MAIN_NAV = [
   { title: "CONTROL CYCLE", url: "/control-cycle", icon: ShieldAlert },
   { title: "EXECUTION", url: "/execution", icon: Gauge },
   { title: "DOT + MUSE", url: "/workforce", icon: UsersRound },
-  { title: "DOT / MUSE EXECUTION", url: "/agent-command", icon: Gauge },
   { title: "COMMANDS", url: "/commands", icon: Terminal },
 ];
 
