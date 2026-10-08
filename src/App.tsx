@@ -33,7 +33,6 @@ import OpsRevenue from "./pages/OpsRevenue";
 import OpsTasksCommand from "./pages/OpsTasksCommand";
 import NotFound from "./pages/NotFound";
 import { AuthGate } from "@/components/AuthGate";
-import DotMuseCommand from "./pages/DotMuseCommand";
 import { SessionQueryBoundary } from "@/components/SessionQueryBoundary";
 
 const queryClient = new QueryClient({
@@ -65,7 +64,6 @@ const App = () => (
             <Route path="/outputs" element={<Outputs />} />
             <Route path="/system" element={<SystemHealth />} />
             <Route path="/workforce" element={<DigitalWorkforce />} />
-            <Route path="/agent-command" element={<DotMuseCommand />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/ops-os" element={<OpsOSHome />} />
             <Route path="/ops-os/social" element={<OpsSocial />} />
